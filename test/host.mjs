@@ -71,7 +71,12 @@ function makeCtx() {
   return { ctx, tools, commands, listeners }
 }
 
-/** An agent face good enough for tool/command execution. */
+/**
+ * An agent face good enough for tool/command execution. The runtime agent
+ * carries `id` equal to its session id (the registry enforces that equality),
+ * `session` — the public face — and `inject`, which is how a plugin rides
+ * model-facing context on the next step.
+ */
 function agentFor(sessionId, cwd) {
   return { id: sessionId, session: { id: sessionId, header: { cwd } } }
 }
@@ -102,7 +107,12 @@ try {
     [...tools.keys()].join(','))
   check('the /worktree command registered', commands.has('worktree'))
   check('the inbox insertion listener registered', (listeners.get('agent/inbox/inserted') ?? []).length === 1)
-  check('the agent disposal listener registered', (listeners.get('agent/disposed') ?? []).length === 1)
+  // Deliberately NOT registered: an arm is the user's intent for the SESSION,
+  // and the host disposes agents on owner unload every time the session is
+  // navigated away from or the page reloads. Clearing on disposal silently
+  // cancelled the arm, so the instruction never reached the model.
+  check('no agent disposal listener (the arm outlives one agent instance)',
+    (listeners.get('agent/disposed') ?? []).length === 0)
   check('defineTool produced a schema-bearing definition',
     typeof tools.get('worktree_create')?.output?.schema === 'object'
     && typeof tools.get('worktree_create')?.execute === 'function')
@@ -151,6 +161,29 @@ try {
   check('a producer-supplied message injects nothing', injected.length === 1)
   listeners.get('agent/inbox/inserted')[0]({ agent, message: { source: { kind: 'user' } } })
   check('the arm is single-shot', injected.length === 1)
+
+  console.log('the arm outlives the agent it was set on')
+  // The observed live failure: arm on the agent serving the session, then the
+  // host disposes that agent (owner unload / page reload / client release) and a
+  // fresh agent serves the next message. The instruction must still ride it.
+  const lifecycleInjected = []
+  const firstAgent = { ...agentFor('s-host', repo), inject: (message) => lifecycleInjected.push(message) }
+  const lifecycleArmed = await commands.get('worktree').handler({
+    rawInput: 'mode-on worktree/lifecycle',
+    agent: firstAgent,
+  })
+  check('mode-on arms the session for the lifecycle case', lifecycleArmed.kind === 'success')
+  for (const handler of listeners.get('agent/disposed') ?? []) handler({ agent: firstAgent })
+  const secondAgent = { ...agentFor('s-host', repo), inject: (message) => lifecycleInjected.push(message) }
+  listeners.get('agent/inbox/inserted')[0]({ agent: secondAgent, message: { source: { kind: 'user' } } })
+  check('a replacement agent still carries the creation instruction',
+    lifecycleInjected.length === 1
+    && JSON.stringify(lifecycleInjected[0]).includes('worktree/lifecycle'),
+    `${lifecycleInjected.length} injection(s)`)
+  const disarmed = await commands.get('worktree').handler({ rawInput: 'mode-off', agent: secondAgent })
+  check('mode-off disarms explicitly', disarmed.kind === 'success')
+  listeners.get('agent/inbox/inserted')[0]({ agent: secondAgent, message: { source: { kind: 'user' } } })
+  check('a disarmed session injects nothing', lifecycleInjected.length === 1)
 
   const removeText = await commands.get('worktree').handler({ rawInput: 'remove worktree/host-test --force', agent: agentFor('s-host', repo) })
   check('remove reports success', removeText.kind === 'success', JSON.stringify(removeText))

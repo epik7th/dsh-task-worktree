@@ -75,7 +75,36 @@ derivation the shell's own `DocumentTitle` / open-in-app / ui-workspace
   hardcoded string: the host keys the client row by the resolved manifest
   package name, so a mismatch would leave the entry unimportable.
 
-### 4. Identity kept for a drop-in swap
+### 4. A second defect, found only by running it live
+
+Live verification on the 0.2.0-rc.2 host showed the browser half working (the
+mode selector and the branch strip rendered; `/worktree mode-on` reached the
+session log three times) while nothing was ever created. The session log settled
+it: `agent/inbox/spliced` carried the user message with `source.kind === 'user'`
+and no message stamped `plugin: 'dsh-task-worktree'` ever followed, so the
+injected instruction simply never happened.
+
+Cause: the plugin cleared its armed-mode map on `agent/disposed`, and the host
+disposes an agent together with its owning fiber (`agent/disposed` on owner
+unload, client release or idle recycle) while a fresh agent serves the same
+session afterwards. Any navigation, session switch or page reload between arming
+and the next message silently cancelled the user's explicit intent — the panel
+looked armed, and nothing happened.
+
+Fix: the arm is keyed by `agent.session.id` (the public `Agent` face; `agent.id`
+is an implementation field whose equality with the session id only the
+registry's own invariant guarantees) and is no longer cleared on disposal. The
+entry lives until the first genuine user message consumes it, or until an
+explicit `/worktree mode-off`. A failed `agent.inject` now logs through
+`ctx.logger` and keeps the arm, because the host contains listener failures into
+a log record and would otherwise hide a broken injection.
+
+`test/host.mjs` pins the lifecycle: arm on the first agent, dispatch
+`agent/disposed`, let a replacement agent carry the next user message, and
+require the instruction to ride it (plus mode-off must still disarm). On the
+pre-fix code that case reports zero injections.
+
+### 5. Identity kept for a drop-in swap
 
 The package name stays `dsh-task-worktree` (only the version moves to `0.5.0`),
 so the `cordis.patch.yml` row id and the profile bundle entry are unchanged and
