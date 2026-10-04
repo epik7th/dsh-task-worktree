@@ -141,11 +141,13 @@ npm run build:client  # rebuild the committed client bundle
 npm test              # host smoke + host-compatibility preflight + client bundle
 ```
 
-`npm test` runs three suites: `test/smoke.mjs` (full worktree lifecycle on a
-scratch repository), `test/preflight.mjs` (the declared host peer range against
-the versions the 0.2.0 line ships) and `test/client.mjs` (the built browser
-bundle against stubbed loader/ctx faces, pinning the main-view current-session
-derivation). The client bundle is committed; CI rebuilds it and fails on any
+`npm test` runs four suites: `test/smoke.mjs` (full worktree lifecycle on a
+scratch repository), `test/host.mjs` (the real plugin entry mounted on a stubbed
+cordis context: tool/command registration, the `ctx.subprocess` seam and the
+worktree-mode instruction injection), `test/preflight.mjs` (the declared host
+peer range against the versions the 0.2.0 line ships) and `test/client.mjs` (the
+built browser bundle against stubbed loader/ctx faces, pinning the main-view
+current-session derivation). The client bundle is committed; CI rebuilds it and fails on any
 diff, so run `npm run build:client` before committing client changes.
 
 ## License

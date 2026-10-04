@@ -111,7 +111,7 @@ npm run build:client  # 重新构建随仓库提交的 client bundle
 npm test              # 宿主冒烟 + 宿主兼容性预检 + 客户端 bundle
 ```
 
-`npm test` 跑三个套件：`test/smoke.mjs`（临时仓库上的完整 worktree 生命周期）、`test/preflight.mjs`（声明的宿主 peer 范围对 0.2.0 线各版本）与 `test/client.mjs`（用桩 loader/ctx 跑构建产物，钉住 main-view 当前会话推导）。client bundle 随仓库提交；CI 会重建并对任何差异报错，改动客户端后请先 `npm run build:client`。
+`npm test` 跑四个套件：`test/smoke.mjs`（临时仓库上的完整 worktree 生命周期）、`test/host.mjs`（真实插件入口挂在桩 cordis 上下文上：工具/命令注册、`ctx.subprocess` seam 与 worktree 模式指引注入）、`test/preflight.mjs`（声明的宿主 peer 范围对 0.2.0 线各版本）与 `test/client.mjs`（用桩 loader/ctx 跑构建产物，钉住 main-view 当前会话推导）。client bundle 随仓库提交；CI 会重建并对任何差异报错，改动客户端后请先 `npm run build:client`。
 
 ## License
 

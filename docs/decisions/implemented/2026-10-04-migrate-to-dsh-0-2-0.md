@@ -61,6 +61,13 @@ derivation the shell's own `DocumentTitle` / open-in-app / ui-workspace
   the first row) supplies id/cwd/blank, arm/disarm send the exact command lines,
   and a list with no retained main view refuses to arm. On the pre-fix bundle
   five of these checks fail, so the regression cannot come back silently.
+- `test/host.mjs` mounts the real `lib/index.js` on a stubbed cordis context
+  whose only real face is the documented `ctx.subprocess` seam, then drives
+  `worktree_create` / `worktree_list` / `worktree_status`, the `/worktree`
+  command surface and the `agent/inbox/inserted` → `agent.inject` path over a
+  scratch repository. The host half had no coverage at all before this; a
+  signature change on `defineTool`, `commands.register` or `subprocess.spawn`
+  now fails in CI instead of in a profile.
 - `test/preflight.mjs` reimplements the host's peer gate over this manifest and
   asserts it passes on `0.2.0-rc.1` / `0.2.0-rc.2` / `0.2.0`, and that the
   pre-migration `^0.1.7-rc.2` range is rejected on `0.2.0-rc.2`.

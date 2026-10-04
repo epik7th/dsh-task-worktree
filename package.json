@@ -67,7 +67,7 @@
   "scripts": {
     "build:client": "tsdown && node scripts/normalize-sourcemap.mjs",
     "typecheck": "tsc -p tsconfig.client.json --noEmit",
-    "test": "node test/smoke.mjs && node test/preflight.mjs && node test/client.mjs",
+    "test": "node test/smoke.mjs && node test/host.mjs && node test/preflight.mjs && node test/client.mjs",
     "release:check": "node scripts/publish.mjs --dry-run",
     "release": "node scripts/publish.mjs",
     "prepublishOnly": "npm test && npm run build:client"
