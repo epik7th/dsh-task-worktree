@@ -1,10 +1,8 @@
 # dsh-task-worktree
 
-[![release](https://img.shields.io/npm/v/dsh-task-worktree?style=flat&label=release&color=blue)](https://www.npmjs.com/package/dsh-task-worktree)
-[![downloads](https://img.shields.io/npm/dt/dsh-task-worktree?style=flat&label=downloads&color=blue)](https://www.npmjs.com/package/dsh-task-worktree)
-[![stars](https://img.shields.io/github/stars/Letter2025/dsh-task-worktree?style=flat&label=stars&color=blue)](https://github.com/Letter2025/dsh-task-worktree)
-[![license](https://img.shields.io/github/license/Letter2025/dsh-task-worktree?style=flat&label=license&color=blue)](LICENSE)
-[![docs](https://img.shields.io/badge/docs-English%20%7C%20%E4%B8%AD%E6%96%87-0075cc?style=flat&labelColor=555555)](https://github.com/Letter2025/dsh-task-worktree/blob/main/README.md)
+[![stars](https://img.shields.io/github/stars/epik7th/dsh-task-worktree?style=flat&label=stars&color=blue)](https://github.com/epik7th/dsh-task-worktree)
+[![license](https://img.shields.io/github/license/epik7th/dsh-task-worktree?style=flat&label=license&color=blue)](LICENSE)
+[![docs](https://img.shields.io/badge/docs-English%20%7C%20%E4%B8%AD%E6%96%87-0075cc?style=flat&labelColor=555555)](https://github.com/epik7th/dsh-task-worktree/blob/main/README.md)
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 **为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供完整的 Git worktree 能力。**
@@ -12,6 +10,14 @@
 一个社区插件：给 DSH 带来 Qoder / Codex / Claude Code 同款的**任务级 worktree 工作流**。每个任务拥有一个**独立的 `git worktree` checkout**（独立分支），记录在 per-repo manifest 中，**跨会话、跨重启永久保存**。主工作区保持干净；使用 worktree 的对话会在**会话头部显示分支徽标**（不再注册工作区、不打乱侧边栏），干完后**带回到主目录**（Move to local）或**直接提交**在 worktree 分支上——一切收尾都由你（人）显式决定。
 
 设计参考：Qoder 的 `Worktree` 执行环境、Codex 的 `codex worktree create --permanent`、Claude Code 的 `--worktree` 会话，并适配 DSH 的会话/工作区模型。
+
+> **Fork 说明。** 本仓库是
+> [Letter2025/dsh-task-worktree](https://github.com/Letter2025/dsh-task-worktree)
+> 的 fork（MIT，包名相同），目标宿主线为 **dsh 0.2.0**。上游 `0.4.3` 声明
+> `^0.1.7-rc.2` 宿主 peer，会被 0.2.0 的兼容性预检拒绝加载；此外它的浏览器半边仍在读
+> `sessions.current`——该字段在 dsh **0.1.6** 已从会话列表状态中移除，导致 GUI 模式选择器与会话头徽标失去锚点。本 fork
+> 抬升 peer 范围，并改为按 main-view 保留关系推导当前会话（与宿主自身的推导一致）。设计、工具、命令与安全模型均来自上游，详见
+> [迁移记录](docs/decisions/implemented/2026-10-04-migrate-to-dsh-0-2-0.md)。
 
 ## 设计对照
 
@@ -52,11 +58,17 @@
 
 ## 安装
 
+从本 fork 的公开仓库安装（包名仍为 `dsh-task-worktree`），装进你跑 Web GUI 的 profile：
+
 ```bash
-dsh plugin --profile web add dsh-task-worktree
+dsh plugin --profile desktop add github:epik7th/dsh-task-worktree
 ```
 
-要求：DeepSeek Harness `0.1.0-rc.7` 包线、Git 2.31+、Node 20+。
+在插件管理器的安装框里填同一个地址（`github:epik7th/dsh-task-worktree`）也可以。`add` 会自动接好 `dsh.bundle` 补丁层。
+
+要求：DeepSeek Harness **`0.2.0-rc.1`** 宿主线（含 rc.2 与 `0.2.0` 正式版）、Git 2.31+、Node 20+。
+
+> 不支持与上游 npm 包（`dsh-task-worktree@0.4.3`）同时安装：宿主按包名给 client bundle 建行，两个解析到同一包名的活跃来源会被拒绝。装一个之前先卸掉另一个。
 
 ## 模型工具
 
@@ -93,9 +105,13 @@ dsh plugin --profile web add dsh-task-worktree
 ## 本地开发
 
 ```bash
-npm test              # 冒烟测试：临时仓库全生命周期
-npm pack --dry-run    # 发布前检查包内容
+npm install
+npm run typecheck     # 客户端源码（tsc）
+npm run build:client  # 重新构建随仓库提交的 client bundle
+npm test              # 宿主冒烟 + 宿主兼容性预检 + 客户端 bundle
 ```
+
+`npm test` 跑三个套件：`test/smoke.mjs`（临时仓库上的完整 worktree 生命周期）、`test/preflight.mjs`（声明的宿主 peer 范围对 0.2.0 线各版本）与 `test/client.mjs`（用桩 loader/ctx 跑构建产物，钉住 main-view 当前会话推导）。client bundle 随仓库提交；CI 会重建并对任何差异报错，改动客户端后请先 `npm run build:client`。
 
 ## License
 

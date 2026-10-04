@@ -1,10 +1,8 @@
 # dsh-task-worktree
 
-[![release](https://img.shields.io/npm/v/dsh-task-worktree?style=flat&label=release&color=blue)](https://www.npmjs.com/package/dsh-task-worktree)
-[![downloads](https://img.shields.io/npm/dt/dsh-task-worktree?style=flat&label=downloads&color=blue)](https://www.npmjs.com/package/dsh-task-worktree)
-[![stars](https://img.shields.io/github/stars/Letter2025/dsh-task-worktree?style=flat&label=stars&color=blue)](https://github.com/Letter2025/dsh-task-worktree)
-[![license](https://img.shields.io/github/license/Letter2025/dsh-task-worktree?style=flat&label=license&color=blue)](LICENSE)
-[![docs](https://img.shields.io/badge/docs-English%20%7C%20%E4%B8%AD%E6%96%87-0075cc?style=flat&labelColor=555555)](https://github.com/Letter2025/dsh-task-worktree/blob/main/README.zh.md)
+[![stars](https://img.shields.io/github/stars/epik7th/dsh-task-worktree?style=flat&label=stars&color=blue)](https://github.com/epik7th/dsh-task-worktree)
+[![license](https://img.shields.io/github/license/epik7th/dsh-task-worktree?style=flat&label=license&color=blue)](LICENSE)
+[![docs](https://img.shields.io/badge/docs-English%20%7C%20%E4%B8%AD%E6%96%87-0075cc?style=flat&labelColor=555555)](https://github.com/epik7th/dsh-task-worktree/blob/main/README.zh.md)
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
 
 **Complete Git worktree support for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).**
@@ -12,6 +10,18 @@
 A community plugin that gives DSH the **task-scoped worktree workflow** of Qoder / Codex / Claude Code: each task gets its own isolated `git worktree` checkout on its own branch, recorded in a per-repo manifest so it **survives sessions and restarts**. The main workspace stays untouched; conversations that use a worktree are marked with a **branch badge** on the session header (no workspace entry is created), and the changes can be **brought back** (Move to local) or **committed directly** on the worktree branch — always under explicit human control.
 
 It follows the design of Qoder's `Worktree` execution environment, Codex's `codex worktree create --permanent`, and Claude Code's `--worktree` sessions, adapted to DSH's session/workspace model.
+
+> **Fork notice.** This is a fork of
+> [Letter2025/dsh-task-worktree](https://github.com/Letter2025/dsh-task-worktree)
+> (MIT, same package name) that targets the **dsh 0.2.0 host line**. The
+> upstream `0.4.3` release declares `^0.1.7-rc.2` host peers, so the 0.2.0
+> compatibility preflight refuses to load it; on top of that its browser half
+> still read `sessions.current`, a session-list field dsh **0.1.6** removed, so
+> the GUI mode selector and the header badge had lost their anchor. This fork
+> raises the peer range and derives the current session from main-view
+> retention, exactly as the shell itself does. Design, tools, commands and
+> safety model are upstream's — see
+> [the migration record](docs/decisions/implemented/2026-10-04-migrate-to-dsh-0-2-0.md).
 
 ## Design
 
@@ -71,11 +81,24 @@ conversation starts) → optional branch name (auto-prefixed "worktree/")
 
 ## Install
 
+Install the fork from its public Git repository (package name `dsh-task-worktree`)
+into the profile that runs your Web GUI:
+
 ```bash
-dsh plugin --profile web add dsh-task-worktree
+dsh plugin --profile desktop add github:epik7th/dsh-task-worktree
 ```
 
-Requires: DeepSeek Harness `0.1.0-rc.7` package line, Git 2.31+, Node 20+.
+The plugin manager's install field accepts the same address
+(`github:epik7th/dsh-task-worktree`) if you prefer the GUI. Running the plugin
+also requires the `dsh.bundle` patch to be composed, which `add` wires up.
+
+Requires: DeepSeek Harness **`0.2.0-rc.1`** host line (rc.2 and the `0.2.0`
+release included), Git 2.31+, Node 20+.
+
+> Installing the upstream npm package (`dsh-task-worktree@0.4.3`) alongside this
+> fork is not supported: the host keys the client bundle by package name, and two
+> active sources resolving to one name are rejected. Uninstall one before
+> installing the other.
 
 ## Model tools
 
@@ -112,9 +135,18 @@ Delivery and cleanup actions (finish / bring-back / remove) stay **human-only** 
 ## Local development
 
 ```bash
-npm test              # smoke test: full lifecycle on a scratch repository
-npm pack --dry-run    # inspect the tarball before publishing
+npm install
+npm run typecheck     # client sources (tsc)
+npm run build:client  # rebuild the committed client bundle
+npm test              # host smoke + host-compatibility preflight + client bundle
 ```
+
+`npm test` runs three suites: `test/smoke.mjs` (full worktree lifecycle on a
+scratch repository), `test/preflight.mjs` (the declared host peer range against
+the versions the 0.2.0 line ships) and `test/client.mjs` (the built browser
+bundle against stubbed loader/ctx faces, pinning the main-view current-session
+derivation). The client bundle is committed; CI rebuilds it and fails on any
+diff, so run `npm run build:client` before committing client changes.
 
 ## License
 
