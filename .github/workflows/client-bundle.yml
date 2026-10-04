@@ -27,6 +27,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Typecheck client sources
+        run: npm run typecheck
+
+      # Host smoke, the host-compatibility preflight over this manifest, and the
+      # built browser bundle against stubbed loader/ctx faces.
+      - name: Test
+        run: npm test
+
       - name: Build client bundle
         run: npm run build:client
 

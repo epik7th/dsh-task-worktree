@@ -1,6 +1,11 @@
 # dsh-task-worktree bundle patch: one insert over the profile root. Later
 # profile layers and the user's own cordis.patch.yml address this row by id;
 # the last write wins per row.
+#
+# Fork note (epik7th/dsh-task-worktree): the row id and the package name stay
+# upstream's on purpose, so installing this fork in place of the npm release
+# needs no profile edit. Never compose both at once — the host keys the client
+# bundle by package name and rejects two active sources resolving to one name.
 
 - insert:
     - id: dsh-task-worktree

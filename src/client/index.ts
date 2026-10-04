@@ -15,6 +15,10 @@
  * injected into slot components in the current shell, so nothing depends on
  * them.
  *
+ * "Current session" is the main-view row: dsh 0.1.6 dropped `sessions.current`
+ * from the list state (navigation belongs to the view owners), so it is
+ * derived from retention — the same derivation the shell itself uses.
+ *
  * Built by tsdown into the __ModuleLoader__ factory bundle at
  * client/client.js; the only externals are the loader module table's react
  * entries.
@@ -23,9 +27,14 @@ import { createElement as h } from 'react'
 // dsh 0.1.2 removed `@deepseek-ai/dsh-client-runtime`; the browser faces now
 // live on the API-controller/client packages (type-only imports — erased from
 // the tsdown bundle, so nothing here needs a module-table entry).
-import type { ISessions, SessionFace } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { ISessions, SessionFace, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { IWorkspaces } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+// Type-only: pulls the ui-session declaration merge of
+// `SessionReferenceSourceMap` (the `mainView` retention source) into this
+// project, so the main-view derivation below typechecks. Erased from the
+// bundle; the ui-session bundle itself is a runtime peer the shell owns.
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import { en, zh } from './locales.ts'
 import { WorktreeBadge } from './WorktreeBadge.tsx'
 import { WorktreePanel } from './WorktreePanel.tsx'
@@ -66,28 +75,40 @@ export function apply(ctx: WorktreeClientContext): void {
   /** Reactive store for worktree-mode declarations. */
   const store = createWorktreeStore()
 
-  /** Resolve the current session face through the current selection id. */
+  /**
+   * The main-view session row — the conversation the GUI's main view retains.
+   *
+   * dsh 0.1.6 dropped `sessions.current` (navigation belongs to the view
+   * owners), so the current conversation is derived from the retention source
+   * counts instead; this is the same derivation the shell's own title/chrome
+   * and upstream ui-workspace's `mainSessionId` use. The Host list order
+   * decides between several retained rows.
+   */
+  const currentRow = (): SessionSummary | undefined => {
+    const snapshot = ctx.sessions.list.getSnapshot()
+    for (const id of snapshot.ids) {
+      const row = snapshot.byId[id]
+      if (row !== undefined && (row.retainedBy.mainView ?? 0) > 0) return row
+    }
+    return undefined
+  }
+
+  /** Resolve the current session id (the staged conversation). */
+  const currentSessionId = (): SessionId | undefined => currentRow()?.id
+
+  /** Resolve the current session face through the main-view row. */
   const currentSession = (): SessionFace | undefined => {
-    const current = ctx.sessions.list.getSnapshot().current
+    const current = currentSessionId()
     if (current === undefined) return undefined
     const binding = ctx.sessions.binding(current)
     return binding?.session
   }
 
-  /** Resolve the current selection id (the staged conversation). */
-  const currentSessionId = (): SessionId | undefined => ctx.sessions.list.getSnapshot().current
-
   /** Resolve the current cwd from the list summary (the outward session face intentionally omits it). */
-  const currentCwd = (): string | undefined => {
-    const snapshot = ctx.sessions.list.getSnapshot()
-    return snapshot.current !== undefined ? snapshot.byId[snapshot.current]?.cwd : undefined
-  }
+  const currentCwd = (): string | undefined => currentRow()?.cwd
 
   /** Whether the staged session is still blank (host-computed empty-log bit). */
-  const currentBlank = (): boolean => {
-    const snapshot = ctx.sessions.list.getSnapshot()
-    return snapshot.current !== undefined && snapshot.byId[snapshot.current]?.blank === true
-  }
+  const currentBlank = (): boolean => currentRow()?.blank === true
 
   /** Open the local workspace that owns the current worktree checkout. */
   const openLocalWorkspace = async (): Promise<void> => {

@@ -459,6 +459,10 @@ function createWorktreeStore() {
 * injected into slot components in the current shell, so nothing depends on
 * them.
 *
+* "Current session" is the main-view row: dsh 0.1.6 dropped `sessions.current`
+* from the list state (navigation belongs to the view owners), so it is
+* derived from retention — the same derivation the shell itself uses.
+*
 * Built by tsdown into the __ModuleLoader__ factory bundle at
 * client/client.js; the only externals are the loader module table's react
 * entries.
@@ -479,24 +483,34 @@ function apply(ctx) {
 	const t = (key) => ctx.locale.bind(NS)(key);
 	/** Reactive store for worktree-mode declarations. */
 	const store = createWorktreeStore();
-	/** Resolve the current session face through the current selection id. */
+	/**
+	* The main-view session row — the conversation the GUI's main view retains.
+	*
+	* dsh 0.1.6 dropped `sessions.current` (navigation belongs to the view
+	* owners), so the current conversation is derived from the retention source
+	* counts instead; this is the same derivation the shell's own title/chrome
+	* and upstream ui-workspace's `mainSessionId` use. The Host list order
+	* decides between several retained rows.
+	*/
+	const currentRow = () => {
+		const snapshot = ctx.sessions.list.getSnapshot();
+		for (const id of snapshot.ids) {
+			const row = snapshot.byId[id];
+			if (row !== void 0 && (row.retainedBy.mainView ?? 0) > 0) return row;
+		}
+	};
+	/** Resolve the current session id (the staged conversation). */
+	const currentSessionId = () => currentRow()?.id;
+	/** Resolve the current session face through the main-view row. */
 	const currentSession = () => {
-		const current = ctx.sessions.list.getSnapshot().current;
+		const current = currentSessionId();
 		if (current === void 0) return void 0;
 		return ctx.sessions.binding(current)?.session;
 	};
-	/** Resolve the current selection id (the staged conversation). */
-	const currentSessionId = () => ctx.sessions.list.getSnapshot().current;
 	/** Resolve the current cwd from the list summary (the outward session face intentionally omits it). */
-	const currentCwd = () => {
-		const snapshot = ctx.sessions.list.getSnapshot();
-		return snapshot.current !== void 0 ? snapshot.byId[snapshot.current]?.cwd : void 0;
-	};
+	const currentCwd = () => currentRow()?.cwd;
 	/** Whether the staged session is still blank (host-computed empty-log bit). */
-	const currentBlank = () => {
-		const snapshot = ctx.sessions.list.getSnapshot();
-		return snapshot.current !== void 0 && snapshot.byId[snapshot.current]?.blank === true;
-	};
+	const currentBlank = () => currentRow()?.blank === true;
 	/** Open the local workspace that owns the current worktree checkout. */
 	const openLocalWorkspace = async () => {
 		const cwd = currentCwd();

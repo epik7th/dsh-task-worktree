@@ -8,13 +8,26 @@
  * class map, and the css text auto-injects a <style data-plugin> tag at
  * factory execution (the loader removes plugin-owned tags on unload).
  */
+import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { basename, dirname, relative as relativePath, resolve as resolvePath } from 'node:path'
 import { defineConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
-const id = 'dsh-task-worktree'
 const PROJECT_ROOT = resolvePath('.')
+
+/**
+ * Plugin id stamped into the loader handoff and the injected style tags.
+ * Derived from package.json so the bundle's registration id always equals the
+ * Loader entry's package name: the client-modules host half keys the row by
+ * the resolved manifest package name, and a mismatched
+ * `window.__ModuleLoader__.load` id leaves the entry unimportable.
+ */
+const PLUGIN_ID: string = JSON.parse(
+  readFileSync(resolvePath(PROJECT_ROOT, 'package.json'), 'utf8'),
+).name
+
+const id = PLUGIN_ID
 
 /**
  * Externals resolved from the loader module table at runtime. Only the

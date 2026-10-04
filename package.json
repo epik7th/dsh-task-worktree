@@ -1,16 +1,16 @@
 {
   "name": "dsh-task-worktree",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "Complete Git worktree support for DeepSeek Harness: task-scoped isolated worktrees with per-repo manifests, workspace registration, bring-back to main, direct commit, and durable state. Reference: Qoder / Codex / Claude Code worktrees.",
   "author": "Letter2025",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Letter2025/dsh-task-worktree.git"
+    "url": "git+https://github.com/epik7th/dsh-task-worktree.git"
   },
   "bugs": {
-    "url": "https://github.com/Letter2025/dsh-task-worktree/issues"
+    "url": "https://github.com/epik7th/dsh-task-worktree/issues"
   },
-  "homepage": "https://github.com/Letter2025/dsh-task-worktree",
+  "homepage": "https://github.com/epik7th/dsh-task-worktree",
   "keywords": [
     "deepseek-harness",
     "dsh",
@@ -59,32 +59,34 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-llm": "^0.1.7-rc.2",
-    "@deepseek-ai/dsh-session": "^0.1.7-rc.2",
-    "@deepseek-ai/dsh-subprocess": "^0.1.7-rc.2",
-    "@deepseek-ai/dsh-tools": "^0.1.7-rc.2"
+    "@deepseek-ai/dsh-llm": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-session": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.2.0-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.2.0-rc.1"
   },
   "scripts": {
     "build:client": "tsdown && node scripts/normalize-sourcemap.mjs",
     "typecheck": "tsc -p tsconfig.client.json --noEmit",
-    "test": "node test/smoke.mjs",
+    "test": "node test/smoke.mjs && node test/preflight.mjs && node test/client.mjs",
     "release:check": "node scripts/publish.mjs --dry-run",
     "release": "node scripts/publish.mjs",
     "prepublishOnly": "npm test && npm run build:client"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-api-remotes": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-api-session-controller": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-api-workspace-controller": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-client-locale": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-client-ui-conversation": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-session": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-subprocess": "0.1.7-rc.2",
-    "@deepseek-ai/dsh-tools": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-api-remotes": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-api-workspace-controller": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-locale": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-client-ui-session": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-session": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-subprocess": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.1",
     "@types/react": "~18.3.1",
     "lightningcss": "^1.25.0",
     "react": "^18.2.0",
+    "semver": "^7.6.3",
     "tsdown": "^0.17.2",
     "typescript": "^5.6.0"
   },
