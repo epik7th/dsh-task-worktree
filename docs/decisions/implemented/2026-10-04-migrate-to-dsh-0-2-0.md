@@ -104,7 +104,23 @@ a log record and would otherwise hide a broken injection.
 require the instruction to ride it (plus mode-off must still disarm). On the
 pre-fix code that case reports zero injections.
 
-### 5. Identity kept for a drop-in swap
+### 5. A third defect: the retired v3 message-source wrapper
+
+With the injection finally riding the message, every armed turn failed with
+`format v4 message requires a producer-owned source kind`. Session format v4
+admits only producer-owned kinds — `source.kind === 'plugin'` is the released v3
+wrapper and the row is refused — and the host's own reader maps that wrapper to
+`plugin:<package name>` (see `producerKind` in
+`@deepseek-ai/dsh-session-format-v3-to-v4`, which falls through to
+`plugin:${plugin}` for third-party names). The injected instruction now carries
+`{ kind: 'plugin:dsh-task-worktree', form: 'instructions' }`.
+
+`test/host.mjs` validates the injected message with that package's real
+`assertV4RowAdmission` rather than a copy of its rule, plus a negative control
+proving the retired wrapper is still refused. On the 0.5.1 code the check fails
+with the exact live message.
+
+### 6. Identity kept for a drop-in swap
 
 The package name stays `dsh-task-worktree` (only the version moves to `0.5.0`),
 so the `cordis.patch.yml` row id and the profile bundle entry are unchanged and

@@ -1,6 +1,6 @@
 {
   "name": "dsh-task-worktree",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Complete Git worktree support for DeepSeek Harness: task-scoped isolated worktrees with per-repo manifests, workspace registration, bring-back to main, direct commit, and durable state. Reference: Qoder / Codex / Claude Code worktrees.",
   "author": "Letter2025",
   "repository": {
@@ -81,6 +81,7 @@
     "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.1",
     "@deepseek-ai/dsh-client-ui-session": "0.2.0-rc.1",
     "@deepseek-ai/dsh-session": "0.2.0-rc.1",
+    "@deepseek-ai/dsh-session-format-v3-to-v4": "0.2.0-rc.1",
     "@deepseek-ai/dsh-subprocess": "0.2.0-rc.1",
     "@deepseek-ai/dsh-tools": "0.2.0-rc.1",
     "@types/react": "~18.3.1",

@@ -13,6 +13,10 @@ import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+// The host's own durable-row admission (session format v4). It is the gate that
+// failed live turns when the plugin stamped the retired `kind: 'plugin'`
+// wrapper on its injected instruction.
+import { assertV4RowAdmission } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { apply } from '../lib/index.js'
 
 let failed = 0
@@ -157,6 +161,32 @@ try {
     && JSON.stringify(injected[0]).includes('worktree_create')
     && JSON.stringify(injected[0]).includes('worktree/host-test'),
     JSON.stringify(injected[0] ?? null).slice(0, 200))
+  // A durable message source must be producer-owned: `kind: 'plugin'` is a
+  // retired v3 wrapper, and the host refuses the row — failing the whole turn
+  // with "format v4 message requires a producer-owned source kind". Validate
+  // with the host's own admission function rather than a copy of its rule.
+  const injectedMessage = injected[0]
+  let admissionError
+  try {
+    assertV4RowAdmission({ type: 'user/message', data: injectedMessage })
+  } catch (error) {
+    admissionError = error.message
+  }
+  check('the injected message is admissible as a format-v4 row', admissionError === undefined,
+    String(admissionError))
+  check('the injected source is producer-owned, not the retired plugin wrapper',
+    injectedMessage?.source?.kind === 'plugin:dsh-task-worktree',
+    String(injectedMessage?.source?.kind))
+  let refusedRetired = false
+  try {
+    assertV4RowAdmission({
+      type: 'user/message',
+      data: { ...injectedMessage, source: { kind: 'plugin', plugin: 'dsh-task-worktree', form: 'instructions' } },
+    })
+  } catch {
+    refusedRetired = true
+  }
+  check('the retired wrapper is still refused (the admission check has teeth)', refusedRetired)
   listeners.get('agent/inbox/inserted')[0]({ agent, message: { source: { kind: 'tool' } } })
   check('a producer-supplied message injects nothing', injected.length === 1)
   listeners.get('agent/inbox/inserted')[0]({ agent, message: { source: { kind: 'user' } } })
