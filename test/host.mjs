@@ -192,6 +192,40 @@ try {
   listeners.get('agent/inbox/inserted')[0]({ agent, message: { source: { kind: 'user' } } })
   check('the arm is single-shot', injected.length === 1)
 
+  console.log('base branch selection (worktree mode start point)')
+  // The panel no longer names the branch: the user picks a BASE branch and the
+  // model proposes the worktree branch name. The base rides the arm so the
+  // injected instruction can pin worktree_create's baseCommit.
+  const baseArm = await commands.get('worktree').handler({
+    rawInput: 'mode-on --base main',
+    agent: agentFor('s-base', repo),
+  })
+  check('mode-on --base arms the session', baseArm.kind === 'success', JSON.stringify(baseArm))
+  check('the arm acknowledgement names the base branch', /main/.test(baseArm.text), String(baseArm.text))
+  const baseInjected = []
+  const baseAgent = { ...agentFor('s-base', repo), inject: (message) => baseInjected.push(message) }
+  listeners.get('agent/inbox/inserted')[0]({ agent: baseAgent, message: { source: { kind: 'user' } } })
+  const baseText = JSON.stringify(baseInjected[0] ?? null)
+  check('the instruction pins baseCommit to the chosen base branch',
+    baseInjected.length === 1 && baseText.includes('baseCommit') && baseText.includes('main'),
+    baseText.slice(0, 300))
+  check('a base-only arm still lets the model name the branch',
+    baseText.includes('worktree/') && !baseText.includes('分支名为'), baseText.slice(0, 300))
+
+  // A base that does not resolve must fail the arm instead of injecting an
+  // instruction whose worktree_create would fail mid-turn.
+  const badArm = await commands.get('worktree').handler({
+    rawInput: 'mode-on --base no-such-branch-here',
+    agent: agentFor('s-bad', repo),
+  })
+  check('an unresolvable base branch fails the command', badArm.kind === 'error', JSON.stringify(badArm))
+  const badInjected = []
+  listeners.get('agent/inbox/inserted')[0]({
+    agent: { ...agentFor('s-bad', repo), inject: (message) => badInjected.push(message) },
+    message: { source: { kind: 'user' } },
+  })
+  check('a refused arm injects nothing', badInjected.length === 0, `${badInjected.length} injection(s)`)
+
   console.log('the arm outlives the agent it was set on')
   // The observed live failure: arm on the agent serving the session, then the
   // host disposes that agent (owner unload / page reload / client release) and a
