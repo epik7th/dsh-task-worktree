@@ -27,6 +27,8 @@ import type { WorktreeStore } from './worktreeStore.ts'
 import css from './WorktreePanel.module.css'
 
 const WORKTREE_PATH = /[\\/]\.dsh-worktrees[\\/]worktree[\\/]/u
+/** Gap between the last hero chip and this panel's row. */
+const CHIP_GAP = 6
 
 /** Minimal console/debug hook exposed for in-GUI diagnosis. */
 declare global {
@@ -38,6 +40,7 @@ declare global {
       declaredWorktree: boolean
       base: string | undefined
       branches: number
+      layout?: { inset: number; lift: number; chipsRight: number; rootLeft: number }
     }
   }
 }
@@ -77,6 +80,8 @@ function currentMode(injected: WorktreePanelInjected): 'local' | 'worktree' {
 export function WorktreePanel(props: WorktreePanelProps): ReactNode {
   const { t, store, sessionIdOf } = props
   const rootRef = useRef<HTMLDivElement>(null)
+  // Geometry the hero placement decided, exposed for in-GUI diagnosis.
+  const layoutRef = useRef<{ inset: number; lift: number; chipsRight: number; rootLeft: number } | undefined>(undefined)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [listing, setListing] = useState<BranchListing | undefined>(undefined)
@@ -117,6 +122,7 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
     declaredWorktree: declared.worktree,
     base: selectedBase,
     branches: listing?.branches.length ?? 0,
+    layout: layoutRef.current,
   }
 
   useLayoutEffect(() => {
@@ -130,33 +136,62 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
       return
     }
 
+    /** Right edge of the chips' content, in viewport coordinates. */
+    const chipsRight = (): number => Array.from(heroRow.querySelectorAll<HTMLElement>('*')).reduce((right, element) => {
+      const rect = element.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right
+    }, 0)
+
     const reposition = (): void => {
       // Measure from the unshifted position, so repeated passes cannot drift.
       root.style.removeProperty('--worktree-hero-inset')
       root.style.removeProperty('--worktree-hero-lift')
       const heroRect = heroRow.getBoundingClientRect()
       const rootRect = root.getBoundingClientRect()
-      const rightEdge = Array.from(heroRow.querySelectorAll<HTMLElement>('*')).reduce((right, element) => {
-        const rect = element.getBoundingClientRect()
-        return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right
-      }, rootRect.left)
-      // Start just past the last chip, and centre our row on the chips' line.
       // `lift` is a margin, so it must be the delta that moves us UP: the
-      // negated distance between the two centres (a positive value here pushed
-      // the row further down instead).
-      const inset = Math.max(0, Math.ceil(rightEdge - rootRect.left + 6))
-      const lift = Math.round((heroRect.top + heroRect.height / 2) - (rootRect.top + rootRect.height / 2))
-      root.style.setProperty('--worktree-hero-inset', `${inset}px`)
+      // distance from our centre to the chips' centre.
+      const lift = Math.round(heroRect.top + heroRect.height / 2 - (rootRect.top + rootRect.height / 2))
+      let inset = Math.max(0, Math.ceil(chipsRight() - rootRect.left + CHIP_GAP))
       root.style.setProperty('--worktree-hero-lift', `${lift}px`)
+      root.style.setProperty('--worktree-hero-inset', `${inset}px`)
+
+      // Closed loop. The chips are slots owned by other plugins and the shell
+      // itself: a preset label, a workspace title, and a webfont all settle
+      // after this effect runs, and an attribute-only re-render does not even
+      // reach the observers. Verify the geometry we actually got and nudge
+      // right until the row truly clears the chips, so a stale first estimate
+      // cannot leave the control overlapping the mode chip.
+      for (let pass = 0; pass < 3; pass += 1) {
+        const applied = root.getBoundingClientRect().left
+        const deficit = Math.ceil(chipsRight() + CHIP_GAP - applied)
+        if (deficit <= 0) break
+        inset += deficit
+        root.style.setProperty('--worktree-hero-inset', `${inset}px`)
+      }
+      layoutRef.current = { inset, lift, chipsRight: Math.round(chipsRight()), rootLeft: Math.round(root.getBoundingClientRect().left) }
     }
 
     reposition()
+    // Every descendant is observed, not just the row: a chip that grows without
+    // resizing the row (an async label, a font swap) must re-trigger us.
     const resizeObserver = new ResizeObserver(reposition)
-    const mutationObserver = new MutationObserver(reposition)
-    resizeObserver.observe(heroRow)
-    mutationObserver.observe(heroRow, { childList: true, subtree: true, characterData: true })
+    const observeChips = (): void => {
+      resizeObserver.disconnect()
+      resizeObserver.observe(heroRow)
+      for (const element of heroRow.querySelectorAll<HTMLElement>('*')) resizeObserver.observe(element)
+    }
+    observeChips()
+    const mutationObserver = new MutationObserver(() => {
+      observeChips()
+      reposition()
+    })
+    mutationObserver.observe(heroRow, { childList: true, subtree: true, characterData: true, attributes: true })
+    const frame = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(reposition) : undefined
+    // A webfont swap changes text metrics without a resize event.
+    void document.fonts?.ready.then(() => reposition())
     window.addEventListener('resize', reposition)
     return () => {
+      if (frame !== undefined && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame)
       resizeObserver.disconnect()
       mutationObserver.disconnect()
       window.removeEventListener('resize', reposition)

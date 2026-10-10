@@ -92,7 +92,19 @@ Two layout facts this control has to respect, both learned live:
   `--worktree-hero-inset` (content right edge of that row + gap) and
   `--worktree-hero-lift` (vertical centre delta), recomputed on resize and on a
   mutation of that row, from an unshifted measurement so repeated passes cannot
-  drift.
+  drift. The chips in that row are themselves slots owned by other plugins —
+  the `Standard mode` chip is `conversation.hero.agentPreset` — so their width
+  settles asynchronously and **one measurement is never enough**. The placement
+  is therefore closed-loop: after applying a move it measures the geometry it
+  actually got and nudges right until the row clears the chips (bounded passes),
+  and it re-measures when any descendant resizes, on any mutation including
+  attribute-only re-renders, once the webfonts are ready, and on one animation
+  frame. `window.__dshTaskWorktreePanelDebug.layout` publishes the numbers the
+  decision used (`inset`, `lift`, `chipsRight`, `rootLeft`). The rejection of
+  "measure once at mount" is empirical: 0.6.1 shipped a positive lift (a full
+  row down) and 0.6.2 shipped a stale inset (the control overlapped the mode
+  chip), and both were invisible to the unit suite until `test/client.mjs`
+  gained a scripted fake DOM whose rects obey the two custom properties.
 - `--worktree-hero-lift` is a margin, so it must carry the delta that moves the
   row *up*: the negated distance between the two centres. The first release
   shipped the un-negated value and pushed the control a full row *down* — the

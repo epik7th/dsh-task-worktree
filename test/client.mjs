@@ -42,6 +42,10 @@ function createReactStub() {
     __begin() {
       cursor = 0
     },
+    /** Pre-seed one hook slot (hands the panel a stand-in DOM element). */
+    __seed(index, value) {
+      slots[index] = value
+    },
     createElement: (type, props, ...children) => ({
       type,
       props: {
@@ -589,6 +593,108 @@ console.log('base-branch listing degrades instead of failing')
     inside.branches.some((branch) => branch.name === 'claude/a'), JSON.stringify(inside.branches))
   check('loose refs outside the workspace root are not invented',
     !inside.branches.some((branch) => branch.name === 'main'), JSON.stringify(inside.branches))
+}
+
+// ── A minimal layout stand-in for the hero chip row ───────────────────────
+/**
+ * Element stand-in whose rect obeys the custom properties the panel sets, so
+ * the layout effect can be exercised without a browser. `HTMLElement` is
+ * defined below because the effect narrows the previous sibling with
+ * `instanceof`.
+ */
+class FakeElement {
+  constructor({ left = 0, top = 0, width = 0, height = 0, descendants = [] } = {}) {
+    this.baseLeft = left
+    this.baseTop = top
+    this.width = width
+    this.height = height
+    this.descendants = descendants
+    this.properties = new Map()
+    this.parentElement = undefined
+    this.previousElementSibling = undefined
+    this.inHero = false
+    this.style = {
+      setProperty: (name, value) => {
+        this.properties.set(name, value)
+      },
+      removeProperty: (name) => {
+        this.properties.delete(name)
+      },
+      getPropertyValue: (name) => this.properties.get(name) ?? '',
+    }
+  }
+
+  getBoundingClientRect() {
+    const offset = (name) => Number.parseFloat(this.properties.get(name) ?? '0') || 0
+    const left = this.baseLeft + offset('--worktree-hero-inset')
+    const top = this.baseTop + offset('--worktree-hero-lift')
+    return { left, top, width: this.width, height: this.height, right: left + this.width, bottom: top + this.height }
+  }
+
+  closest(selector) {
+    return this.inHero && selector === '[data-phase="hero"]' ? this : null
+  }
+
+  querySelectorAll() {
+    return this.descendants
+  }
+}
+globalThis.HTMLElement = FakeElement
+globalThis.ResizeObserver = class {
+  observe() {}
+  disconnect() {}
+}
+globalThis.MutationObserver = class {
+  observe() {}
+  disconnect() {}
+}
+
+console.log('the panel shares the hero chip line instead of overlapping it')
+{
+  reactStub.__reset()
+  const commands = []
+  const { ctx, registered, pending } = makeCtx(repoRows, commands, { files: mainRepoFiles, workspaces: repoWorkspaces })
+  clientModule.apply(ctx)
+  for (const register of pending) register()
+
+  // The chips row sits above a gap; its mode chip is a slot owned by another
+  // plugin whose label settles late. Its edge is scripted per read: the first
+  // estimate sees 600, and by the correction pass the same call reports 611 —
+  // exactly the live case where one measurement is not enough.
+  let chipReads = 0
+  const chipEdges = [600, 611, 611, 611, 611]
+  const modeChip = new FakeElement({ left: 430, top: 100, width: 170, height: 28 })
+  const modeChipRect = modeChip.getBoundingClientRect.bind(modeChip)
+  modeChip.getBoundingClientRect = () => {
+    const right = chipEdges[Math.min(chipReads, chipEdges.length - 1)]
+    chipReads += 1
+    return { ...modeChipRect(), right, width: right - 430 }
+  }
+  const workspaceChip = new FakeElement({ left: 20, top: 100, width: 260, height: 28 })
+  const heroRow = new FakeElement({ left: 0, top: 100, width: 900, height: 28, descendants: [workspaceChip, modeChip] })
+  const root = new FakeElement({ left: 0, top: 140, width: 220, height: 28 })
+  root.inHero = true
+  root.parentElement = { previousElementSibling: heroRow }
+  reactStub.__seed(0, { current: root })
+
+  renderSlot(registered, 'worktree')
+  const lift = root.style.getPropertyValue('--worktree-hero-lift')
+  const inset = Number.parseFloat(root.style.getPropertyValue('--worktree-hero-inset'))
+  check('the controls are lifted onto the chips line, not pushed below it',
+    lift === '-40px', `lift=${lift}`)
+  check('one placement clears a chip that settled between the estimate and the check',
+    inset === 617, `inset=${inset} (the estimate saw 600, the settled chip ends at 611)`)
+  check('the applied geometry actually clears the chip',
+    root.getBoundingClientRect().left === 617 && root.getBoundingClientRect().top === 100,
+    JSON.stringify(root.getBoundingClientRect()))
+
+  // A chip that grows even later (another plugin mounts beside the mode picker)
+  // is caught by the re-measure an observer, a font swap, or a resize triggers.
+  chipEdges.push(700, 700, 700, 700)
+  renderSlot(registered, 'worktree')
+  const grown = Number.parseFloat(root.style.getPropertyValue('--worktree-hero-inset'))
+  check('a later re-measure follows a chip that grew after placement',
+    grown === 706, `inset=${grown}`)
 }
 
 console.log('a workspace without git offers no worktree control')

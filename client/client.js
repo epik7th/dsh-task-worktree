@@ -319,6 +319,8 @@ function WorktreeBadge(props) {
 * the model — there is deliberately no name field here.
 */
 const WORKTREE_PATH = /[\\/]\.dsh-worktrees[\\/]worktree[\\/]/u;
+/** Gap between the last hero chip and this panel's row. */
+const CHIP_GAP = 6;
 function currentMode(injected) {
 	const cwd = injected.currentCwd();
 	return typeof cwd === "string" && WORKTREE_PATH.test(cwd) ? "worktree" : "local";
@@ -326,6 +328,7 @@ function currentMode(injected) {
 function WorktreePanel(props) {
 	const { t, store, sessionIdOf } = props;
 	const rootRef = (0, react.useRef)(null);
+	const layoutRef = (0, react.useRef)(void 0);
 	const [open, setOpen] = (0, react.useState)(false);
 	const [query, setQuery] = (0, react.useState)("");
 	const [listing, setListing] = (0, react.useState)(void 0);
@@ -356,7 +359,8 @@ function WorktreePanel(props) {
 		hero,
 		declaredWorktree: declared.worktree,
 		base: selectedBase,
-		branches: listing?.branches.length ?? 0
+		branches: listing?.branches.length ?? 0,
+		layout: layoutRef.current
 	};
 	(0, react.useLayoutEffect)(() => {
 		const root = rootRef.current;
@@ -366,31 +370,57 @@ function WorktreePanel(props) {
 			root?.style.removeProperty("--worktree-hero-lift");
 			return;
 		}
+		/** Right edge of the chips' content, in viewport coordinates. */
+		const chipsRight = () => Array.from(heroRow.querySelectorAll("*")).reduce((right, element) => {
+			const rect = element.getBoundingClientRect();
+			return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right;
+		}, 0);
 		const reposition = () => {
 			root.style.removeProperty("--worktree-hero-inset");
 			root.style.removeProperty("--worktree-hero-lift");
 			const heroRect = heroRow.getBoundingClientRect();
 			const rootRect = root.getBoundingClientRect();
-			const rightEdge = Array.from(heroRow.querySelectorAll("*")).reduce((right, element) => {
-				const rect = element.getBoundingClientRect();
-				return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right;
-			}, rootRect.left);
-			const inset = Math.max(0, Math.ceil(rightEdge - rootRect.left + 6));
 			const lift = Math.round(heroRect.top + heroRect.height / 2 - (rootRect.top + rootRect.height / 2));
-			root.style.setProperty("--worktree-hero-inset", `${inset}px`);
+			let inset = Math.max(0, Math.ceil(chipsRight() - rootRect.left + CHIP_GAP));
 			root.style.setProperty("--worktree-hero-lift", `${lift}px`);
+			root.style.setProperty("--worktree-hero-inset", `${inset}px`);
+			for (let pass = 0; pass < 3; pass += 1) {
+				const applied = root.getBoundingClientRect().left;
+				const deficit = Math.ceil(chipsRight() + CHIP_GAP - applied);
+				if (deficit <= 0) break;
+				inset += deficit;
+				root.style.setProperty("--worktree-hero-inset", `${inset}px`);
+			}
+			layoutRef.current = {
+				inset,
+				lift,
+				chipsRight: Math.round(chipsRight()),
+				rootLeft: Math.round(root.getBoundingClientRect().left)
+			};
 		};
 		reposition();
 		const resizeObserver = new ResizeObserver(reposition);
-		const mutationObserver = new MutationObserver(reposition);
-		resizeObserver.observe(heroRow);
+		const observeChips = () => {
+			resizeObserver.disconnect();
+			resizeObserver.observe(heroRow);
+			for (const element of heroRow.querySelectorAll("*")) resizeObserver.observe(element);
+		};
+		observeChips();
+		const mutationObserver = new MutationObserver(() => {
+			observeChips();
+			reposition();
+		});
 		mutationObserver.observe(heroRow, {
 			childList: true,
 			subtree: true,
-			characterData: true
+			characterData: true,
+			attributes: true
 		});
+		const frame = typeof requestAnimationFrame === "function" ? requestAnimationFrame(reposition) : void 0;
+		document.fonts?.ready.then(() => reposition());
 		window.addEventListener("resize", reposition);
 		return () => {
+			if (frame !== void 0 && typeof cancelAnimationFrame === "function") cancelAnimationFrame(frame);
 			resizeObserver.disconnect();
 			mutationObserver.disconnect();
 			window.removeEventListener("resize", reposition);
