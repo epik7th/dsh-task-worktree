@@ -31,6 +31,7 @@ It follows the design of Qoder's `Worktree` execution environment, Codex's `code
 | Worktrees live in `<repo>/.dsh-worktrees/` | background worktree checkout | `.codex/worktrees/` | `.claude/worktrees/` |
 | Durable registry survives restarts | per-session | global index | session binding |
 | Own branch per task | branch selector | — | `worktree-<name>` |
+| Pick the branch the task starts from | worktree base-branch picker | `codex worktree create --base` | branch selector |
 | Open as a DSH workspace from the GUI | panel selector | `codex worktree open` | launches into the worktree |
 | Mark the conversation using the worktree | session badge | — | — |
 | Bring changes back to main | Move to local | — | exit/cleanup prompt |
@@ -41,11 +42,11 @@ It follows the design of Qoder's `Worktree` execution environment, Codex's `code
 ## How it works
 
 ```
-Blank conversation: pick "Worktree mode" in the dock dropdown (before the
-conversation starts) → optional branch name (auto-prefixed "worktree/")
+Blank conversation: tick the "worktree" checkbox in the dock (before the
+conversation starts) → pick the base branch in the picker beside it
    │  send the first message → the host injects an instructions context block
    ▼  the model calls worktree_create on that same turn
-   │  git worktree add -b worktree/<name> <repo>/.dsh-worktrees/worktree/worktree/<name>
+   │  git worktree add -b worktree/<name> <repo>/.dsh-worktrees/worktree/worktree/<name> <base>
    │  NO workspace is registered, NO conversation switch — the session header
    │  badge marks the worktree this conversation uses
    ▼  work continues in the same conversation (the model uses absolute paths
@@ -58,12 +59,20 @@ conversation starts) → optional branch name (auto-prefixed "worktree/")
                                                 (--force also deletes uncommitted changes)
 ```
 
-1. **Start in worktree mode**: on a blank conversation the dock selector shows
-   「Branch:」 before you send anything — picking "Worktree mode" ARMS the
-   session, and the branch-name field is optional (typed names are
-   auto-prefixed `worktree/`, blank lets the model propose one). The mode
-   selector disappears once the conversation starts; the session-header badge
-   takes over the indication.
+1. **Start in worktree mode**: on a blank conversation the dock shows a
+   `worktree` checkbox and a branch picker. The picker always displays the
+   branch a new task worktree would start from (the repository's current
+   branch by default) and opens a searchable list of local and
+   remote-tracking branches — the choice is passed to the host as
+   `mode-on --base <branch>` and pinned as `worktree_create`'s `baseCommit`.
+   Ticking the checkbox ARMS the session; the branch itself is always named by
+   the model (`worktree/…`), so there is no name field. The control disappears
+   once the conversation starts; the session-header badge takes over the
+   indication. The picker reads `<repo>/.git` (`HEAD`, loose refs,
+   `packed-refs`) through the shell's `workspaceFiles` Remote; when that
+   service is absent — or the session works inside a checkout whose loose refs
+   live outside its workspace root — the picker says so and the host falls
+   back to `HEAD`.
 2. **Send your first message** — the host injects one `instructions` context
    block (shown as 上下文注入) right before your message: create the worktree
    with a `worktree/`-prefixed branch, work inside the checkout path, and at
@@ -113,7 +122,10 @@ Delivery and cleanup actions (finish / bring-back / remove) stay **human-only** 
 ## Human commands
 
 ```
-/worktree mode-on [<name>]     arm worktree mode (injection with the next message)
+/worktree mode-on [<name>] [--base <branch>]
+                               arm worktree mode (injection with the next
+                               message); --base pins the start point, <name>
+                               fixes the branch instead of letting the model name it
 /worktree mode-off             disarm worktree mode
 /worktree create <name> [<base>] [--carry]
 /worktree list

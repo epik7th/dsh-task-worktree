@@ -27,6 +27,7 @@
 | worktree 位于 `<仓库>/.dsh-worktrees/` | 后台 worktree checkout | `.codex/worktrees/` | `.claude/worktrees/` |
 | 注册表跨重启持久 | 按会话 | 全局索引 | 会话绑定 |
 | 每任务独立分支 | 分支选择器 | — | `worktree-<名称>` |
+| 选择任务从哪个分支开始 | worktree 起点分支选择器 | `codex worktree create --base` | 分支选择器 |
 | 从 GUI 打开（注册为 DSH 工作区） | 面板选择器 | `codex worktree open` | 直接进入 worktree |
 | 会话头部徽标标识对话所用 worktree | 会话标识 | — | — |
 | 把改动带回主目录 | Move to local | — | 退出/清理询问 |
@@ -37,10 +38,10 @@
 ## 工作流
 
 ```
-空白对话：发送前在下拉框选「Worktree模式」（分支名可选，自动加 worktree/ 前缀）
+空白对话：发送前勾选 dock 里的「worktree」复选框 → 在旁边的选择器里挑起点分支
    │  发送第一条消息 → 宿主注入一条「上下文注入」instructions 块
    ▼  模型在同一轮调用 worktree_create
-   │  git worktree add -b worktree/<名称> <仓库>/.dsh-worktrees/worktree/worktree/<名称>
+   │  git worktree add -b worktree/<名称> <仓库>/.dsh-worktrees/worktree/worktree/<名称> <起点>
    │  不注册工作区、不切换对话；会话头部徽标标记该对话使用的 worktree
    ▼  对话原地继续，模型在 checkout 路径（绝对路径）内干活；完成后模型提醒收尾
    │
@@ -50,7 +51,7 @@
                                                  （--force 连未提交改动一起删）
 ```
 
-1. **以 Worktree 模式开始**：空白对话、发送前，dock 选择器显示「分支名：」——选「Worktree模式」即武装会话；分支名可选（输入的会自动加 `worktree/` 前缀，留空由模型拟定）。**对话开始后选择器自动隐藏**，由会话头部徽标接管指示。
+1. **以 Worktree 模式开始**：空白对话、发送前，dock 显示「worktree」复选框与起点分支选择器。选择器默认显示仓库当前分支，点开是本地分支 + `origin/*` 远程分支的可搜索列表；选择结果以 `mode-on --base <分支>` 交给宿主，并作为 `worktree_create` 的 `baseCommit`。勾选复选框即武装会话；**分支名始终由模型拟定**（`worktree/…`），因此没有名称输入框。**对话开始后控件自动隐藏**，由会话头部徽标接管指示。选择器通过 shell 的 `workspaceFiles` Remote 读取 `<仓库>/.git`（`HEAD`、松散引用、`packed-refs`）；该服务缺失时——或会话正跑在 checkout 里、其松散引用位于工作区根之外时——选择器会如实提示，宿主退回 `HEAD`。
 2. **发送第一条消息** → 宿主在你消息前注入一条 `instructions` 上下文块（界面显示为「上下文注入」）：创建 `worktree/` 前缀分支、在 checkout 路径内干活、任务结束时**给出可复制的收尾命令**（`bring-back` 或 `remove --force`）。
 3. 或跳过模式，直接让 agent 隔离任务：**"用 worktree 隔离干活，任务叫 xxx"** —— 模型调用 `worktree_create`，name 同时作分支名与路径（支持斜杠）。
 4. **不注册任何工作区**，侧边栏保持干净；worktree 模式下会话头部显示分支徽标。
@@ -83,7 +84,9 @@ dsh plugin --profile desktop add github:epik7th/dsh-task-worktree
 ## 人工命令
 
 ```
-/worktree mode-on [<名称>]       武装 worktree 模式（下条消息随之注入指引）
+/worktree mode-on [<名称>] [--base <分支>]
+                                 武装 worktree 模式（下条消息随之注入指引）；
+                                 --base 固定起点分支，<名称> 固定分支名（默认由模型拟定）
 /worktree mode-off               关闭 worktree 模式
 /worktree create <名称> [<base>] [--carry]
 /worktree list
