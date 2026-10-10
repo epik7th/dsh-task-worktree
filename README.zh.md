@@ -51,7 +51,7 @@
                                                  （--force 连未提交改动一起删）
 ```
 
-1. **以 Worktree 模式开始**：空白对话、发送前，dock 显示「worktree」复选框与起点分支选择器。选择器默认显示仓库当前分支，点开是本地分支 + `origin/*` 远程分支的可搜索列表；选择结果以 `mode-on --base <分支>` 交给宿主，并作为 `worktree_create` 的 `baseCommit`。勾选复选框即武装会话；**分支名始终由模型拟定**（`worktree/…`），因此没有名称输入框。**对话开始后控件自动隐藏**，由会话头部徽标接管指示。选择器通过 shell 的 `workspaceFiles` Remote 读取 `<仓库>/.git`（`HEAD`、松散引用、`packed-refs`）；该服务缺失时——或会话正跑在 checkout 里、其松散引用位于工作区根之外时——选择器会如实提示，宿主退回 `HEAD`。
+1. **以 Worktree 模式开始**：空白对话、发送前，dock 显示「worktree」复选框与起点分支选择器。选择器默认显示仓库当前分支，点开是本地分支 + `origin/*` 远程分支的可搜索列表；选择结果以 `mode-on --base <分支>` 交给宿主，并作为 `worktree_create` 的 `baseCommit`。勾选复选框即武装会话；**分支名始终由模型拟定**（`worktree/…`），因此没有名称输入框。**对话开始后控件自动隐藏**，由会话头部徽标接管指示。选择器通过 shell 的 `workspaceFiles` Remote 读取 `<仓库>/.git`（`HEAD`、松散引用、`packed-refs`）；该服务缺失时——或会话正跑在 checkout 里、其松散引用位于工作区根之外时——选择器会如实提示，宿主退回 `HEAD`。工作区若根本不是 Git 仓库，则不提供 worktree 模式：引用读取完成后控件消失（在此之前仍渲染——"未知"不等于"没有"）。
 2. **发送第一条消息** → 宿主在你消息前注入一条 `instructions` 上下文块（界面显示为「上下文注入」）：创建 `worktree/` 前缀分支、在 checkout 路径内干活、任务结束时**给出可复制的收尾命令**（`bring-back` 或 `remove --force`）。
 3. 或跳过模式，直接让 agent 隔离任务：**"用 worktree 隔离干活，任务叫 xxx"** —— 模型调用 `worktree_create`，name 同时作分支名与路径（支持斜杠）。
 4. **不注册任何工作区**，侧边栏保持干净；worktree 模式下会话头部显示分支徽标。

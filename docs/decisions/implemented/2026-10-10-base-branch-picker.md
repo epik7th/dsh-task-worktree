@@ -93,6 +93,11 @@ Two layout facts this control has to respect, both learned live:
   `--worktree-hero-lift` (vertical centre delta), recomputed on resize and on a
   mutation of that row, from an unshifted measurement so repeated passes cannot
   drift.
+- `--worktree-hero-lift` is a margin, so it must carry the delta that moves the
+  row *up*: the negated distance between the two centres. The first release
+  shipped the un-negated value and pushed the control a full row *down* — the
+  offset is now derived from an explicit "delta that moves us up" expression
+  rather than an incidental subtraction order.
 - Every interactive child must opt back into pointer events. The shell's
   `Checkbox` primitive ships **no** `pointer-events` rule (the built bundle
   contains none at all), so `.root { pointer-events: none }` silently made the
@@ -135,6 +140,11 @@ Two layout facts this control has to respect, both learned live:
   repository whose loose refs are out of scope, and a host without the
   `workspaceFiles` package all yield a smaller list — never an error and never
   a broken arm.
+- A workspace that is not a repository hides the control entirely
+  (`reason: 'not-a-repo'`), because no worktree can be made from it and arming
+  would only fail inside the model's turn. "Unknown" is deliberately not "no":
+  before the ref read settles, and when the shell exposes no file service, the
+  control stays available and the host defaults the base to `HEAD`.
 - `test/client.mjs` now renders the slot component against stub hooks and
   asserts on the intended controls (`primitive:Checkbox` props, picker
   contents, the exact `/worktree …` line each interaction issues) plus the ref

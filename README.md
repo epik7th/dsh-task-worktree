@@ -72,7 +72,9 @@ conversation starts) → pick the base branch in the picker beside it
    `packed-refs`) through the shell's `workspaceFiles` Remote; when that
    service is absent — or the session works inside a checkout whose loose refs
    live outside its workspace root — the picker says so and the host falls
-   back to `HEAD`.
+   back to `HEAD`. A workspace that is not a Git repository is not offered
+   worktree mode at all: the control disappears once the ref read settles
+   (before that it renders, since "unknown" is not "no").
 2. **Send your first message** — the host injects one `instructions` context
    block (shown as 上下文注入) right before your message: create the worktree
    with a `worktree/`-prefixed branch, work inside the checkout path, and at

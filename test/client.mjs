@@ -591,6 +591,31 @@ console.log('base-branch listing degrades instead of failing')
     !inside.branches.some((branch) => branch.name === 'main'), JSON.stringify(inside.branches))
 }
 
+console.log('a workspace without git offers no worktree control')
+{
+  reactStub.__reset()
+  const commands = []
+  const rows = { 's-nogit': { id: 's-nogit', cwd: '/tmp/norepo', blank: true, retainedBy: { mainView: 1 } } }
+  const { ctx, registered, pending } = makeCtx(rows, commands, {
+    files: fakeWorkspaceFiles('/tmp/norepo', fileTree({ '/tmp/norepo/README.md': '# not a repository\n' })),
+    workspaces: [{ workspaceId: 'ws-4', path: '/tmp/norepo', sessionIds: ['s-nogit'] }],
+  })
+  clientModule.apply(ctx)
+  for (const register of pending) register()
+  const listing = await branchesOf(registered)
+  check('the reader reports a non-repository workspace',
+    listing.available === false && listing.reason === 'not-a-repo', JSON.stringify(listing))
+  // Unknown is not "no": the mount render cannot know yet, and only a settled
+  // read that reports no repository removes the control.
+  const unsettled = renderSlot(registered, 'worktree')
+  check('the control is offered until the repository read settles',
+    unsettled !== null && unsettled !== undefined)
+  await tick()
+  const tree = renderSlot(registered, 'worktree')
+  check('worktree mode is not offered where there is no repository',
+    tree === null || tree === undefined, outline(tree).join(' > '))
+}
+
 console.log('worktree checkbox and base-branch picker')
 {
   reactStub.__reset()

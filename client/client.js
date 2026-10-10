@@ -376,7 +376,7 @@ function WorktreePanel(props) {
 				return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right;
 			}, rootRect.left);
 			const inset = Math.max(0, Math.ceil(rightEdge - rootRect.left + 6));
-			const lift = Math.round(rootRect.top + rootRect.height / 2 - (heroRect.top + heroRect.height / 2));
+			const lift = Math.round(heroRect.top + heroRect.height / 2 - (rootRect.top + rootRect.height / 2));
 			root.style.setProperty("--worktree-hero-inset", `${inset}px`);
 			root.style.setProperty("--worktree-hero-lift", `${lift}px`);
 		};
@@ -475,6 +475,7 @@ function WorktreePanel(props) {
 		});
 	};
 	if (!hero) return null;
+	if (listing?.available === false && listing.reason === "not-a-repo") return null;
 	const branches = listing?.branches ?? [];
 	const needle = query.trim().toLowerCase();
 	const visible = needle === "" ? branches : branches.filter((branch) => branch.name.toLowerCase().includes(needle));

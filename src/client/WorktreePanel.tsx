@@ -141,8 +141,11 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
         return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right
       }, rootRect.left)
       // Start just past the last chip, and centre our row on the chips' line.
+      // `lift` is a margin, so it must be the delta that moves us UP: the
+      // negated distance between the two centres (a positive value here pushed
+      // the row further down instead).
       const inset = Math.max(0, Math.ceil(rightEdge - rootRect.left + 6))
-      const lift = Math.round((rootRect.top + rootRect.height / 2) - (heroRect.top + heroRect.height / 2))
+      const lift = Math.round((heroRect.top + heroRect.height / 2) - (rootRect.top + rootRect.height / 2))
       root.style.setProperty('--worktree-hero-inset', `${inset}px`)
       root.style.setProperty('--worktree-hero-lift', `${lift}px`)
     }
@@ -246,8 +249,13 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
   }
 
   // The mode control only matters before the conversation starts; after the
-  // first message the header badge carries the mode indication instead.
+  // first message the header badge carries the mode indication instead, and a
+  // workspace that is not a repository has nothing a worktree could be made
+  // from. Unknown is not "no": until the ref read settles (and when the shell
+  // exposes no file service) the control stays available, and the host still
+  // falls back to HEAD.
   if (!hero) return null
+  if (listing?.available === false && listing.reason === 'not-a-repo') return null
 
   const branches = listing?.branches ?? []
   const needle = query.trim().toLowerCase()
