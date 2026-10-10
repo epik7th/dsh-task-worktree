@@ -476,6 +476,38 @@ console.log('no main-view row')
     String(message))
 }
 
+console.log('the hero control row stays clickable')
+{
+  // The row turns pointer events off so it never eats clicks meant for the
+  // composer card behind it, so every interactive child must opt back in. The
+  // shell's Checkbox primitive ships no pointer-events rule of its own, and a
+  // missed `auto` made the mode switch silently unclickable live.
+  const source = await readFile(new URL('../client/client.js', import.meta.url), 'utf8')
+  const cssText = /const css = "((?:[^"\\]|\\.)*)"/u.exec(source)?.[1] ?? ''
+  const ruleOf = (className) => (typeof className === 'string'
+    ? new RegExp(`\\.${className}\\{([^}]*)\\}`, 'u').exec(cssText)?.[1] ?? ''
+    : '')
+  reactStub.__reset()
+  const { ctx, registered, pending } = makeCtx(repoRows, [], { files: mainRepoFiles, workspaces: repoWorkspaces })
+  clientModule.apply(ctx)
+  for (const register of pending) register()
+  const tree = renderSlot(registered, 'worktree')
+  const root = findElement(tree, (node) => node.props?.['data-testid'] === 'worktree-panel')
+  const checkbox = findElement(tree, (node) => node.type === 'primitive:Checkbox')
+  const trigger = findElement(tree, (node) => node.props?.['data-testid'] === 'worktree-branch-trigger')
+  check('the row itself ignores pointer events', ruleOf(root?.props.className).includes('pointer-events:none'),
+    ruleOf(root?.props.className))
+  check('the worktree checkbox re-enables pointer events',
+    ruleOf(checkbox?.props.className).includes('pointer-events:auto'), ruleOf(checkbox?.props.className))
+  check('the branch trigger re-enables pointer events',
+    ruleOf(trigger?.props.className).includes('pointer-events:auto'), ruleOf(trigger?.props.className))
+  trigger?.props.onClick()
+  const openTree = renderSlot(registered, 'worktree')
+  const menu = findElement(openTree, (node) => node.props?.['data-testid'] === 'worktree-branch-menu')
+  check('the branch menu re-enables pointer events',
+    ruleOf(menu?.props.className).includes('pointer-events:auto'), ruleOf(menu?.props.className))
+}
+
 console.log('base-branch listing (workspaceFiles Remote)')
 {
   const { ctx, registered, pending } = makeCtx(repoRows, [], { files: mainRepoFiles, workspaces: repoWorkspaces })

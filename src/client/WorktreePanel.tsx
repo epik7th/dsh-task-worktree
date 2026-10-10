@@ -121,32 +121,42 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
 
   useLayoutEffect(() => {
     const root = rootRef.current
+    // The shell renders the hero's workspace/mode chips in the row that precedes
+    // this panel's container; sharing that line is a purely geometric decision.
     const heroRow = root?.parentElement?.previousElementSibling
     if (root === null || root === undefined || !(heroRow instanceof HTMLElement) || root.closest('[data-phase="hero"]') === null) {
       root?.style.removeProperty('--worktree-hero-inset')
+      root?.style.removeProperty('--worktree-hero-lift')
       return
     }
 
-    const updateInset = (): void => {
+    const reposition = (): void => {
+      // Measure from the unshifted position, so repeated passes cannot drift.
+      root.style.removeProperty('--worktree-hero-inset')
+      root.style.removeProperty('--worktree-hero-lift')
+      const heroRect = heroRow.getBoundingClientRect()
       const rootRect = root.getBoundingClientRect()
       const rightEdge = Array.from(heroRow.querySelectorAll<HTMLElement>('*')).reduce((right, element) => {
         const rect = element.getBoundingClientRect()
         return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right
       }, rootRect.left)
+      // Start just past the last chip, and centre our row on the chips' line.
       const inset = Math.max(0, Math.ceil(rightEdge - rootRect.left + 6))
+      const lift = Math.round((rootRect.top + rootRect.height / 2) - (heroRect.top + heroRect.height / 2))
       root.style.setProperty('--worktree-hero-inset', `${inset}px`)
+      root.style.setProperty('--worktree-hero-lift', `${lift}px`)
     }
 
-    updateInset()
-    const resizeObserver = new ResizeObserver(updateInset)
-    const mutationObserver = new MutationObserver(updateInset)
+    reposition()
+    const resizeObserver = new ResizeObserver(reposition)
+    const mutationObserver = new MutationObserver(reposition)
     resizeObserver.observe(heroRow)
     mutationObserver.observe(heroRow, { childList: true, subtree: true, characterData: true })
-    window.addEventListener('resize', updateInset)
+    window.addEventListener('resize', reposition)
     return () => {
       resizeObserver.disconnect()
       mutationObserver.disconnect()
-      window.removeEventListener('resize', updateInset)
+      window.removeEventListener('resize', reposition)
     }
   }, [])
 

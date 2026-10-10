@@ -233,7 +233,7 @@ function worktreeNameOfCwd(cwd) {
 
 //#endregion
 //#region \0dsh-css:src/client/WorktreePanel.module.css.mjs
-const css = ".Y0CJ8q_root{z-index:8;box-sizing:border-box;width:min(var(--dsh-composer-card-max-width,780px), calc(100% - 32px));min-height:28px;color:var(--dsw-alias-label-primary,#1f1f1f);pointer-events:none;align-self:center;align-items:center;gap:8px;padding-left:8px;font-size:13px;display:flex;position:relative}.Y0CJ8q_branchTrigger{max-width:260px;min-height:28px;color:inherit;font:inherit;white-space:nowrap;cursor:pointer;border:1px solid var(--dsw-alias-border-l2,#0000001f);pointer-events:auto;background:0 0;border-radius:7px;align-items:center;gap:5px;padding:3px 8px;font-weight:500;line-height:18px;display:inline-flex}.Y0CJ8q_branchTrigger:hover,.Y0CJ8q_branchTrigger[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover,#0000000e)}.Y0CJ8q_branchTrigger:disabled{cursor:default;opacity:.5}.Y0CJ8q_branchName{text-overflow:ellipsis;overflow:hidden}.Y0CJ8q_toggle{min-height:28px}.Y0CJ8q_icon{color:var(--dsw-alias-label-secondary,#5f6368);flex:none}.Y0CJ8q_chevron{color:var(--dsw-alias-label-caption,#8a8f98);flex:none;transition:transform .14s}.Y0CJ8q_chevronOpen{transform:rotate(180deg)}.Y0CJ8q_branchTrigger:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4f73ff);outline-offset:1px}.Y0CJ8q_branchOption:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4f73ff);outline-offset:1px}.Y0CJ8q_search:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4f73ff);outline-offset:1px}.Y0CJ8q_popover{z-index:60;width:288px;color:var(--dsw-alias-label-primary,#1f1f1f);background:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l2,#0000001f);pointer-events:auto;border-radius:7px;flex-direction:column;display:flex;position:absolute;top:calc(100% + 6px);left:8px;overflow:hidden;box-shadow:0 10px 28px #00000021,0 2px 8px #00000014}.Y0CJ8q_searchRow{border-bottom:1px solid var(--dsw-alias-border-l2,#0000001a);align-items:center;gap:6px;padding:6px 9px;display:flex}.Y0CJ8q_search{min-width:0;height:22px;color:inherit;font:inherit;background:0 0;border:0;outline:none;flex:1}.Y0CJ8q_search::placeholder{color:var(--dsw-alias-label-caption,#8a8f98)}.Y0CJ8q_branchList{max-height:264px;padding:4px;overflow-y:auto}.Y0CJ8q_branchOption{width:100%;min-height:28px;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:5px;align-items:center;gap:6px;padding:5px 8px;line-height:18px;display:flex}.Y0CJ8q_branchOption:hover,.Y0CJ8q_branchOption.Y0CJ8q_selected{background:var(--dsw-alias-interactive-bg-hover,#0000000e)}.Y0CJ8q_branchOptionName{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.Y0CJ8q_branchOption[data-remote=true] .Y0CJ8q_branchOptionName{color:var(--dsw-alias-label-secondary,#5f6368)}.Y0CJ8q_branchCheck{color:var(--dsw-alias-state-business-primary,#4f73ff);flex:none}.Y0CJ8q_branchEmpty{color:var(--dsw-alias-label-caption,#8a8f98);padding:8px;font-size:12px}.Y0CJ8q_notice{color:var(--dsw-alias-state-error,#c93b3b);white-space:nowrap;pointer-events:auto;margin-left:2px;font-size:12px}.Y0CJ8q_notice[data-tone=info]{color:var(--dsw-alias-label-secondary,#5f6368)}.Y0CJ8q_badge{max-width:200px;min-height:20px;color:var(--dsw-alias-label-secondary,#5f6368);white-space:nowrap;border:1px solid var(--dsw-alias-border-l2,#0000001a);border-radius:999px;align-items:center;gap:4px;padding:1px 7px;font-size:11px;line-height:16px;display:inline-flex;overflow:hidden}.Y0CJ8q_badge>span{text-overflow:ellipsis;overflow:hidden}.Y0CJ8q_badgeIcon{color:var(--dsw-alias-state-business-primary,#4f73ff);flex:none}[data-phase=hero] .Y0CJ8q_root{flex:none;align-self:flex-start;width:auto;max-width:calc(100% - 32px);padding-left:20px;display:inline-flex}[data-phase=hero] .Y0CJ8q_popover{left:20px}@media (max-width:720px){.Y0CJ8q_root{width:calc(100% - 20px);padding-left:0}.Y0CJ8q_popover{left:0}}";
+const css = ".Y0CJ8q_root{z-index:8;box-sizing:border-box;width:min(var(--dsh-composer-card-max-width,780px), calc(100% - 32px));min-height:28px;color:var(--dsw-alias-label-primary,#1f1f1f);pointer-events:none;align-self:center;align-items:center;gap:8px;padding-left:8px;font-size:13px;display:flex;position:relative}.Y0CJ8q_branchTrigger{max-width:260px;min-height:28px;color:inherit;font:inherit;white-space:nowrap;cursor:pointer;border:1px solid var(--dsw-alias-border-l2,#0000001f);pointer-events:auto;background:0 0;border-radius:7px;align-items:center;gap:5px;padding:3px 8px;font-weight:500;line-height:18px;display:inline-flex}.Y0CJ8q_branchTrigger:hover,.Y0CJ8q_branchTrigger[aria-expanded=true]{background:var(--dsw-alias-interactive-bg-hover,#0000000e)}.Y0CJ8q_branchTrigger:disabled{cursor:default;opacity:.5}.Y0CJ8q_branchName{text-overflow:ellipsis;overflow:hidden}.Y0CJ8q_toggle{pointer-events:auto;min-height:28px}.Y0CJ8q_icon{color:var(--dsw-alias-label-secondary,#5f6368);flex:none}.Y0CJ8q_chevron{color:var(--dsw-alias-label-caption,#8a8f98);flex:none;transition:transform .14s}.Y0CJ8q_chevronOpen{transform:rotate(180deg)}.Y0CJ8q_branchTrigger:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4f73ff);outline-offset:1px}.Y0CJ8q_branchOption:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4f73ff);outline-offset:1px}.Y0CJ8q_search:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#4f73ff);outline-offset:1px}.Y0CJ8q_popover{z-index:60;width:288px;color:var(--dsw-alias-label-primary,#1f1f1f);background:var(--dsw-alias-bg-base,#fff);border:1px solid var(--dsw-alias-border-l2,#0000001f);pointer-events:auto;border-radius:7px;flex-direction:column;display:flex;position:absolute;top:calc(100% + 6px);left:8px;overflow:hidden;box-shadow:0 10px 28px #00000021,0 2px 8px #00000014}.Y0CJ8q_searchRow{border-bottom:1px solid var(--dsw-alias-border-l2,#0000001a);align-items:center;gap:6px;padding:6px 9px;display:flex}.Y0CJ8q_search{min-width:0;height:22px;color:inherit;font:inherit;background:0 0;border:0;outline:none;flex:1}.Y0CJ8q_search::placeholder{color:var(--dsw-alias-label-caption,#8a8f98)}.Y0CJ8q_branchList{max-height:264px;padding:4px;overflow-y:auto}.Y0CJ8q_branchOption{width:100%;min-height:28px;color:inherit;font:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:5px;align-items:center;gap:6px;padding:5px 8px;line-height:18px;display:flex}.Y0CJ8q_branchOption:hover,.Y0CJ8q_branchOption.Y0CJ8q_selected{background:var(--dsw-alias-interactive-bg-hover,#0000000e)}.Y0CJ8q_branchOptionName{text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;overflow:hidden}.Y0CJ8q_branchOption[data-remote=true] .Y0CJ8q_branchOptionName{color:var(--dsw-alias-label-secondary,#5f6368)}.Y0CJ8q_branchCheck{color:var(--dsw-alias-state-business-primary,#4f73ff);flex:none}.Y0CJ8q_branchEmpty{color:var(--dsw-alias-label-caption,#8a8f98);padding:8px;font-size:12px}.Y0CJ8q_notice{color:var(--dsw-alias-state-error,#c93b3b);white-space:nowrap;pointer-events:auto;margin-left:2px;font-size:12px}.Y0CJ8q_notice[data-tone=info]{color:var(--dsw-alias-label-secondary,#5f6368)}.Y0CJ8q_badge{max-width:200px;min-height:20px;color:var(--dsw-alias-label-secondary,#5f6368);white-space:nowrap;border:1px solid var(--dsw-alias-border-l2,#0000001a);border-radius:999px;align-items:center;gap:4px;padding:1px 7px;font-size:11px;line-height:16px;display:inline-flex;overflow:hidden}.Y0CJ8q_badge>span{text-overflow:ellipsis;overflow:hidden}.Y0CJ8q_badgeIcon{color:var(--dsw-alias-state-business-primary,#4f73ff);flex:none}[data-phase=hero] .Y0CJ8q_root{width:auto;max-width:calc(100% - 32px);margin-top:var(--worktree-hero-lift,0px);margin-left:var(--worktree-hero-inset,20px);flex:none;align-self:flex-start;padding-left:0;display:inline-flex}[data-phase=hero] .Y0CJ8q_popover{left:0}@media (max-width:720px){.Y0CJ8q_root{width:calc(100% - 20px);padding-left:0}.Y0CJ8q_popover{left:0}}";
 const tagId = "dsh-task-worktree/WorktreePanel.module.css";
 if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 	const tag = document.createElement("style");
@@ -363,31 +363,37 @@ function WorktreePanel(props) {
 		const heroRow = root?.parentElement?.previousElementSibling;
 		if (root === null || root === void 0 || !(heroRow instanceof HTMLElement) || root.closest("[data-phase=\"hero\"]") === null) {
 			root?.style.removeProperty("--worktree-hero-inset");
+			root?.style.removeProperty("--worktree-hero-lift");
 			return;
 		}
-		const updateInset = () => {
+		const reposition = () => {
+			root.style.removeProperty("--worktree-hero-inset");
+			root.style.removeProperty("--worktree-hero-lift");
+			const heroRect = heroRow.getBoundingClientRect();
 			const rootRect = root.getBoundingClientRect();
 			const rightEdge = Array.from(heroRow.querySelectorAll("*")).reduce((right, element) => {
 				const rect = element.getBoundingClientRect();
 				return rect.width > 0 && rect.height > 0 ? Math.max(right, rect.right) : right;
 			}, rootRect.left);
 			const inset = Math.max(0, Math.ceil(rightEdge - rootRect.left + 6));
+			const lift = Math.round(rootRect.top + rootRect.height / 2 - (heroRect.top + heroRect.height / 2));
 			root.style.setProperty("--worktree-hero-inset", `${inset}px`);
+			root.style.setProperty("--worktree-hero-lift", `${lift}px`);
 		};
-		updateInset();
-		const resizeObserver = new ResizeObserver(updateInset);
-		const mutationObserver = new MutationObserver(updateInset);
+		reposition();
+		const resizeObserver = new ResizeObserver(reposition);
+		const mutationObserver = new MutationObserver(reposition);
 		resizeObserver.observe(heroRow);
 		mutationObserver.observe(heroRow, {
 			childList: true,
 			subtree: true,
 			characterData: true
 		});
-		window.addEventListener("resize", updateInset);
+		window.addEventListener("resize", reposition);
 		return () => {
 			resizeObserver.disconnect();
 			mutationObserver.disconnect();
-			window.removeEventListener("resize", updateInset);
+			window.removeEventListener("resize", reposition);
 		};
 	}, []);
 	const closeMenu = () => {

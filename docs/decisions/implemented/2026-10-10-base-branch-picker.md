@@ -83,6 +83,23 @@ Ticking the box arms the host with the shown branch; a branch change re-arms
 physically runs inside a checkout — keeps the previous "open the owning local
 workspace" behaviour. There is no name field and no mode dropdown.
 
+Two layout facts this control has to respect, both learned live:
+
+- On the hero the shell renders the workspace and mode chips in the row that
+  precedes the panel's container, and `.root` turns pointer events off so the
+  row never eats clicks meant for the composer card behind it. The lift onto
+  the chip line is measured, not hardcoded: the panel publishes
+  `--worktree-hero-inset` (content right edge of that row + gap) and
+  `--worktree-hero-lift` (vertical centre delta), recomputed on resize and on a
+  mutation of that row, from an unshifted measurement so repeated passes cannot
+  drift.
+- Every interactive child must opt back into pointer events. The shell's
+  `Checkbox` primitive ships **no** `pointer-events` rule (the built bundle
+  contains none at all), so `.root { pointer-events: none }` silently made the
+  mode switch unclickable until `.toggle` re-enabled it. The client suite now
+  asserts the resolved rules for the row, the checkbox, the branch trigger, and
+  the branch menu, so that class of regression cannot ship again.
+
 ## Alternatives considered
 
 - **Hand-written Typert Remote contribution** (`ctx.typertGateway` +

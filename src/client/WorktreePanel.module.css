@@ -49,8 +49,11 @@
 }
 
 .toggle {
-  /* The primitive owns the box and the label; this only places it in our row. */
+  /* The primitive owns the box and the label; placement plus the pointer-events
+     opt-out of `.root` (the shell's Checkbox ships no rule of its own, so
+     without this the switch is silently unclickable). */
   min-height: 28px;
+  pointer-events: auto;
 }
 
 .icon {
@@ -208,20 +211,23 @@
 }
 
 :global([data-phase='hero']) .root {
-  /* Own mode bar below the official chip row, content aligned with the
-     chip row's LEFT edge (the dsh-task-worktree chip): the shell insets
-     its chip row ~20px from the dock container edge. No negative margin
-     or chip-row lifting. */
+  /* On the hero the controls belong on the SAME line as the shell's workspace
+     and mode chips, which live in the previous sibling row. The panel measures
+     that row (its content right edge and its vertical centre) and publishes two
+     custom properties, so the lift survives a resized window, a chip added by
+     another plugin, and a wrapped chip row. */
   display: inline-flex;
   flex: none;
   width: auto;
   max-width: calc(100% - 32px);
   align-self: flex-start;
-  padding-left: 20px;
+  padding-left: 0;
+  margin-top: var(--worktree-hero-lift, 0px);
+  margin-left: var(--worktree-hero-inset, 20px);
 }
 
 :global([data-phase='hero']) .popover {
-  left: 20px;
+  left: 0;
 }
 
 @media (max-width: 720px) {
