@@ -3,6 +3,7 @@
   z-index: 8;
   box-sizing: border-box;
   display: flex;
+  gap: 8px;
   align-items: center;
   align-self: center;
   width: min(var(--dsh-composer-card-max-width, 780px), calc(100% - 32px));
@@ -13,12 +14,13 @@
   pointer-events: none;
 }
 
-.trigger {
+.branchTrigger {
   display: inline-flex;
-  align-items: center;
   gap: 5px;
+  align-items: center;
+  max-width: 260px;
   min-height: 28px;
-  padding: 4px 7px;
+  padding: 3px 8px;
   color: inherit;
   font: inherit;
   font-weight: 500;
@@ -26,24 +28,29 @@
   white-space: nowrap;
   cursor: pointer;
   background: transparent;
-  border: 0;
-  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.12));
+  border-radius: 7px;
   pointer-events: auto;
 }
 
-.trigger:hover,
-.trigger[aria-expanded='true'] {
+.branchTrigger:hover,
+.branchTrigger[aria-expanded='true'] {
   background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.055));
 }
 
-.trigger:focus-visible,
-.menuItem:focus-visible,
-.backButton:focus-visible,
-.secondaryButton:focus-visible,
-.primaryButton:focus-visible,
-.nameInput:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary, #4f73ff);
-  outline-offset: 1px;
+.branchTrigger:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.branchName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toggle {
+  /* The primitive owns the box and the label; this only places it in our row. */
+  min-height: 28px;
 }
 
 .icon {
@@ -61,13 +68,21 @@
   transform: rotate(180deg);
 }
 
+.branchTrigger:focus-visible,
+.branchOption:focus-visible,
+.search:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary, #4f73ff);
+  outline-offset: 1px;
+}
+
 .popover {
   position: absolute;
   top: calc(100% + 6px);
   left: 8px;
   z-index: 60;
-  width: 168px;
-  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  width: 288px;
   overflow: hidden;
   color: var(--dsw-alias-label-primary, #1f1f1f);
   background: var(--dsw-alias-bg-base, #fff);
@@ -77,17 +92,44 @@
   pointer-events: auto;
 }
 
-.menuItem {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 14px;
-  gap: 7px;
+.searchRow {
+  display: flex;
+  gap: 6px;
   align-items: center;
-  width: 100%;
-  min-height: 32px;
-  padding: 6px 8px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1));
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
   color: inherit;
   font: inherit;
-  font-weight: 400;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.search::placeholder {
+  color: var(--dsw-alias-label-caption, #8a8f98);
+}
+
+.branchList {
+  max-height: 264px;
+  padding: 4px;
+  overflow-y: auto;
+}
+
+.branchOption {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  min-height: 28px;
+  padding: 5px 8px;
+  color: inherit;
+  font: inherit;
   line-height: 18px;
   text-align: left;
   cursor: pointer;
@@ -96,140 +138,46 @@
   border-radius: 5px;
 }
 
-.menuItem > span {
-  grid-column: 2;
+.branchOption:hover,
+.branchOption.selected {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.055));
+}
+
+.branchOptionName {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.menuItem:hover,
-.menuItem.selected {
-  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.055));
-}
-
-.menuItem:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.menuItem.danger {
-  color: var(--dsw-alias-state-error, #c93b3b);
-}
-
-.menuItem.danger .icon {
-  color: currentColor;
-}
-
-.trailingIcon {
-  grid-column: 3;
-  color: var(--dsw-alias-label-caption, #8a8f98);
-  justify-self: end;
-}
-
-.separator {
-  height: 1px;
-  margin: 4px 6px;
-  background: var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1));
-}
-
-.menuHeader {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 32px;
-  padding: 4px 6px 5px 4px;
-  margin-bottom: 4px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1));
-}
-
-.backButton {
-  display: inline-grid;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  padding: 0;
+/* Remote-tracking refs read as secondary: they are not local branches. */
+.branchOption[data-remote='true'] .branchOptionName {
   color: var(--dsw-alias-label-secondary, #5f6368);
-  cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-radius: 5px;
-  place-items: center;
 }
 
-.backButton:hover {
-  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.055));
+.branchCheck {
+  flex: none;
+  color: var(--dsw-alias-state-business-primary, #4f73ff);
 }
 
-.createPanel {
-  width: 272px;
-}
-
-.popover:has(.createPanel) {
-  width: 280px;
-}
-
-.nameInput {
-  box-sizing: border-box;
-  width: calc(100% - 12px);
-  height: 34px;
-  margin: 7px 6px 9px;
-  padding: 6px 9px;
-  color: inherit;
-  font: inherit;
-  background: var(--dsw-alias-bg-base, #fff);
-  border: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.2));
-  border-radius: 6px;
-}
-
-.nameInput::placeholder {
+.branchEmpty {
+  padding: 8px;
   color: var(--dsw-alias-label-caption, #8a8f98);
-}
-
-.createActions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-  padding: 0 6px 5px;
-}
-
-.secondaryButton,
-.primaryButton {
-  min-height: 28px;
-  padding: 4px 11px;
-  font: inherit;
-  cursor: pointer;
-  border-radius: 6px;
-}
-
-.secondaryButton {
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.12));
-}
-
-.secondaryButton:hover {
-  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.055));
-}
-
-.primaryButton {
-  color: #fff;
-  background: var(--dsw-alias-state-business-primary, #4f73ff);
-  border: 1px solid transparent;
-}
-
-.primaryButton:disabled {
-  cursor: default;
-  opacity: 0.45;
+  font-size: 12px;
 }
 
 .notice {
-  margin-left: 6px;
+  margin-left: 2px;
   color: var(--dsw-alias-state-error, #c93b3b);
   font-size: 12px;
   white-space: nowrap;
   pointer-events: auto;
+}
+
+/* Progress copy ("Switching…") is not a failure. */
+.notice[data-tone='info'] {
+  color: var(--dsw-alias-label-secondary, #5f6368);
 }
 
 /* Conversation-header worktree badge (Qoder-style conversation labelling). */
@@ -257,104 +205,6 @@
 .badgeIcon {
   flex: none;
   color: var(--dsw-alias-state-business-primary, #4f73ff);
-}
-
-/* Hero-phase "start in worktree mode" strip (blank conversation). */
-.heroStart {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 2px 6px 2px 4px;
-  margin-left: 6px;
-  border: 1px dashed var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.16));
-  border-radius: 7px;
-  pointer-events: auto;
-}
-
-.heroStartLabel {
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.heroStartInput {
-  box-sizing: border-box;
-  width: 230px;
-  height: 26px;
-  padding: 3px 8px;
-  color: inherit;
-  font: inherit;
-  background: var(--dsw-alias-bg-base, #fff);
-  border: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.2));
-  border-radius: 6px;
-}
-
-.heroStartInput::placeholder {
-  color: var(--dsw-alias-label-caption, #8a8f98);
-}
-
-.heroStartButton {
-  min-height: 26px;
-  padding: 3px 12px;
-  color: #fff;
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-  background: var(--dsw-alias-state-business-primary, #4f73ff);
-  border: 1px solid transparent;
-  border-radius: 6px;
-}
-
-.heroStartButton:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-.armedCancel {
-  min-height: 26px;
-  padding: 3px 12px;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.12));
-  border-radius: 6px;
-}
-
-.armedCancel:hover {
-  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.055));
-}
-
-.armedCancel:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-
-/* Compact text row for non-mode /worktree commands in the chat flow. */
-.commandRow {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 0;
-  color: var(--dsw-alias-label-primary, #1f1f1f);
-  font-size: 12px;
-  line-height: 17px;
-}
-
-.commandRowLine {
-  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
-  font-weight: 600;
-  word-break: break-all;
-}
-
-.commandRowOutcome {
-  color: var(--dsw-alias-label-secondary, #5f6368);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.commandRowError {
-  color: var(--dsw-alias-state-error, #c93b3b);
 }
 
 :global([data-phase='hero']) .root {

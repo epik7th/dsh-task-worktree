@@ -1,8 +1,12 @@
 /**
  * Conversation-header worktree badge: renders a branch icon next to the
- * session title when this conversation is in worktree mode — declared via
- * start-in-worktree-mode (store) or running inside a checkout (cwd). Marks
- * the conversation in the Qoder style without consuming a workspace entry.
+ * session title when this conversation is in worktree mode — armed from the
+ * composer (store) or running inside a checkout (cwd). Marks the conversation
+ * in the Qoder style without consuming a workspace entry.
+ *
+ * The worktree branch name is model-chosen, so it only reaches this badge
+ * through the session cwd (once a checkout owns the conversation); an armed
+ * mode with an unknown name shows the generic label.
  */
 import { useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
@@ -28,7 +32,7 @@ declare global {
   interface Window {
     __dshTaskWorktreeDebug?: {
       sessionId: string | undefined
-      declared: string | undefined
+      base: string | undefined
       declaredWorktree: boolean
       cwd: string | undefined
       label: string | undefined
@@ -43,14 +47,14 @@ export function WorktreeBadge(props: WorktreeBadgeProps): ReactNode {
   const sessionId = props.sessionIdOf()
   const cwdName = worktreeNameOfCwd(currentCwd())
   const declared = store.stateOf(sessionId)
-  // Badge switches on once worktree mode is selected/armed (or the session
-  // runs inside a checkout); a declared mode with no name shows the fallback.
+  // Badge switches on once worktree mode is armed (or the session runs inside
+  // a checkout); an armed mode with no discovered name shows the fallback.
   const fallback = declared.worktree ? t('badgeFallback') : undefined
-  const name = declared.name ?? cwdName ?? fallback
+  const name = cwdName ?? fallback
 
   window.__dshTaskWorktreeDebug = {
     sessionId,
-    declared: declared.name,
+    base: declared.base,
     declaredWorktree: declared.worktree,
     cwd: cwdName,
     label: name,

@@ -1,21 +1,27 @@
 /**
- * Compact local/worktree mode selector mounted above the composer.
+ * Compact worktree control mounted above the composer.
  *
- * Selecting Worktree mode arms the host (the creation instruction rides the
- * next user message); the revealed strip optionally takes a name (Enter to
- * apply). Selecting Local mode disarms. Management commands (/worktree
- * list/status/...) stay available from the composer directly.
+ * The `worktree` checkbox switches the mode: checking it arms the host with the
+ * picked base branch (the creation instruction then rides the next user
+ * message), unchecking disarms. The branch button always shows the start point
+ * a new worktree would use and opens a searchable list of the repository's
+ * local and remote-tracking branches. The worktree branch itself is named by
+ * the model — there is deliberately no name field here.
  */
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import type { SessionFace } from '@deepseek-ai/dsh-api-session-controller/client'
 import {
   // dsh-client-ui-primitives 0.1.7 renamed the icon sizes: Regular (1px
-  // stroke) replaces the numbered 14/16 artwork words.
+  // stroke) replaces the numbered 14/16 artwork words. `Checkbox` is the
+  // shell's own control, so the mode switch matches the rest of the composer.
+  Checkbox,
   IconBranchOutlineRegular,
+  IconCheckOutlineRegular,
   IconChevronDownOutlineRegular,
-  IconFolderOpenOutlineRegular,
+  IconSearchOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { BranchListing } from './gitRefs.ts'
 import type { WorktreeKey } from './locales.ts'
 import type { WorktreeStore } from './worktreeStore.ts'
 import css from './WorktreePanel.module.css'
@@ -30,6 +36,8 @@ declare global {
       mode: string
       hero: boolean
       declaredWorktree: boolean
+      base: string | undefined
+      branches: number
     }
   }
 }
@@ -44,10 +52,12 @@ export interface WorktreePanelInjected {
   currentBlank(): boolean
   /** Open a fresh session in the local workspace that owns the current worktree (legacy checkout sessions). */
   openLocalWorkspace(): Promise<void>
-  /** Arm worktree mode: the host injects the creation instruction with the next user message (optional name). */
-  armWorktreeMode(name: string | undefined): Promise<void>
+  /** Arm worktree mode with the picked base branch (undefined: the host's HEAD). */
+  armWorktreeMode(base: string | undefined): Promise<void>
   /** Disarm worktree mode. */
   disarmWorktreeMode(): Promise<void>
+  /** Read the repository's branches for the base-branch picker. */
+  listBranches(): Promise<BranchListing>
 }
 
 export interface WorktreePanelProps extends WorktreePanelInjected {
@@ -68,36 +78,45 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
   const { t, store, sessionIdOf } = props
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
+  const [query, setQuery] = useState('')
+  const [listing, setListing] = useState<BranchListing | undefined>(undefined)
+  const [picked, setPicked] = useState<string | undefined>(undefined)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const nameTimer = useRef<number | undefined>(undefined)
-  /** Last raw name actually sent to the host (dedup guard for re-arms). */
-  const lastAppliedRef = useRef<string>('')
   useSyncExternalStore(store.subscribe, store.getVersion)
   const sessionId = sessionIdOf()
   const declared = store.stateOf(sessionId)
-  // Blank-hero bit still tracked for layout/debugging; the strip itself is
-  // driven purely by the mode dropdown selection.
+  // Blank-hero bit still tracked for layout/debugging; the control itself is
+  // driven purely by the mode and the repository listing.
   const hero = props.currentBlank()
   // A conversation declared (or runs inside) a worktree shows worktree mode.
   const mode = declared.worktree || currentMode(props) === 'worktree' ? 'worktree' : 'local'
+  // Precedence: the branch picked in this panel, then the armed base, then the
+  // repository's checked-out branch (the host's own default when unknown).
+  const selectedBase = picked ?? declared.base ?? listing?.current ?? undefined
 
-  // Keep the name input in sync with the committed worktree name.
+  // Read the ref database once the control is on a blank conversation. A
+  // failure is not fatal: the host still defaults a new worktree to HEAD.
   useEffect(() => {
-    setName(declared.name ?? '')
-  }, [declared.name])
-
-  // Clear the pending name-apply timer on unmount.
-  useEffect(() => () => {
-    if (nameTimer.current !== undefined) window.clearTimeout(nameTimer.current)
-  }, [])
+    if (!hero) return () => {}
+    let live = true
+    void props.listBranches().then((next) => {
+      if (live) setListing(next)
+    }).catch(() => {
+      if (live) setListing(undefined)
+    })
+    return () => {
+      live = false
+    }
+  }, [hero])
 
   window.__dshTaskWorktreePanelDebug = {
     sessionId,
     mode,
     hero,
     declaredWorktree: declared.worktree,
+    base: selectedBase,
+    branches: listing?.branches.length ?? 0,
   }
 
   useLayoutEffect(() => {
@@ -133,11 +152,11 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
 
   const closeMenu = (): void => {
     setOpen(false)
-    setName('')
+    setQuery('')
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return () => {}
     const onPointerDown = (event: PointerEvent): void => {
       if (rootRef.current?.contains(event.target as Node) !== true) closeMenu()
     }
@@ -160,62 +179,21 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
   /** Legacy: leave a session actually running inside a worktree checkout. */
   const switchLocal = (): void => {
     if (busy !== null) return
-    if (mode === 'local') {
-      closeMenu()
-      return
-    }
     setBusy('local')
+    setNotice(t('switching'))
     void props.openLocalWorkspace().then(() => {
-      closeMenu()
+      setNotice(null)
     }).catch(() => {
+      setNotice(null)
       showFailure()
     }).finally(() => {
       setBusy(null)
     })
   }
 
-  const toggleMenu = (): void => {
-    setOpen(value => !value)
-  }
-
-  /** 本地模式 radio: disarm the declared worktree mode, or leave a legacy checkout session. */
-  const selectLocal = (): void => {
-    if (busy !== null) return
-    if (declared.worktree) {
-      disarmMode()
-      closeMenu()
-      return
-    }
-    if (mode === 'worktree') {
-      switchLocal()
-      return
-    }
-    closeMenu()
-  }
-
-  /** Commit the typed worktree name: re-arms the host with that name (mode-on
- * is idempotent; the pending name simply updates). Debounced at 900ms and
- * deduplicated against the previously applied value — a single typing run
- * produces at most ONE command row in the conversation, not one per pause. */
-  const applyName = (value: string): void => {
-    setName(value)
-    const trimmed = value.trim()
-    if (trimmed === lastAppliedRef.current) return
-    if (nameTimer.current !== undefined) window.clearTimeout(nameTimer.current)
-    nameTimer.current = window.setTimeout(() => {
-      nameTimer.current = undefined
-      if (busy !== null) return
-      lastAppliedRef.current = trimmed
-      void props.armWorktreeMode(trimmed === '' ? undefined : trimmed).catch(() => {
-        lastAppliedRef.current = ''
-        showFailure()
-      })
-    }, 900)
-  }
-
   const disarmMode = (): void => {
     if (busy !== null) return
-    setBusy('disarmMode')
+    setBusy('disarm')
     void props.disarmWorktreeMode().catch(() => {
       showFailure()
     }).finally(() => {
@@ -223,9 +201,47 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
     })
   }
 
-  // The mode selector only matters before the conversation starts; after the
+  /**
+   * The checkbox is the mode switch: checking arms the host with the selected
+   * base branch, unchecking disarms — or, for a session that physically runs
+   * inside a checkout, opens the owning local workspace.
+   */
+  const toggleMode = (next: boolean): void => {
+    if (busy !== null) return
+    if (next) {
+      if (declared.worktree) return
+      setBusy('arm')
+      void props.armWorktreeMode(selectedBase).catch(() => {
+        showFailure()
+      }).finally(() => {
+        setBusy(null)
+      })
+      return
+    }
+    if (declared.worktree) {
+      disarmMode()
+      return
+    }
+    if (mode === 'worktree') switchLocal()
+  }
+
+  /** Pick a start point; an already armed session is re-armed with it. */
+  const selectBranch = (name: string): void => {
+    setPicked(name)
+    closeMenu()
+    if (!declared.worktree) return
+    void props.armWorktreeMode(name).catch(() => {
+      showFailure()
+    })
+  }
+
+  // The mode control only matters before the conversation starts; after the
   // first message the header badge carries the mode indication instead.
   if (!hero) return null
+
+  const branches = listing?.branches ?? []
+  const needle = query.trim().toLowerCase()
+  const visible = needle === '' ? branches : branches.filter((branch) => branch.name.toLowerCase().includes(needle))
 
   return (
     <div
@@ -237,72 +253,78 @@ export function WorktreePanel(props: WorktreePanelProps): ReactNode {
     >
       <button
         type="button"
-        className={css.trigger}
-        aria-haspopup="menu"
+        className={css.branchTrigger}
+        data-testid="worktree-branch-trigger"
+        aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={toggleMenu}
+        aria-label={t('baseBranchLabel')}
+        title={t('baseBranchLabel')}
+        disabled={busy !== null}
+        onClick={() => setOpen(value => !value)}
       >
-        {mode === 'worktree'
-          ? <IconBranchOutlineRegular size={14} className={css.icon} />
-          : <IconFolderOpenOutlineRegular size={14} className={css.icon} />}
-        <span>{mode === 'worktree' ? t('worktreeMode') : t('localMode')}</span>
+        <IconBranchOutlineRegular size={14} className={css.icon} />
+        <span className={css.branchName}>{selectedBase ?? t('baseFallback')}</span>
         <IconChevronDownOutlineRegular
           size={12}
           className={`${css.chevron} ${open ? css.chevronOpen : ''}`}
         />
       </button>
 
-      {declared.worktree && (
-        <div className={css.heroStart} data-testid="worktree-mode-start">
-          <IconBranchOutlineRegular size={14} className={css.icon} />
-          <span className={css.heroStartLabel}>{t('heroStartLabel')}</span>
-          <input
-            className={css.heroStartInput}
-            value={name}
-            onChange={event => applyName(event.target.value)}
-            placeholder={t('heroStartPlaceholder')}
-            aria-label={t('heroStartPlaceholder')}
-            disabled={busy !== null}
-          />
-        </div>
-      )}
+      <Checkbox
+        checked={mode === 'worktree'}
+        onChange={toggleMode}
+        label={t('worktreeLabel')}
+        disabled={busy !== null}
+        title={t('worktreeMode')}
+        className={css.toggle}
+      />
 
       {open && (
-        <div className={css.popover} role="menu" data-testid="worktree-mode-menu">
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={mode === 'local'}
-            className={`${css.menuItem} ${mode === 'local' ? css.selected : ''}`}
-            disabled={busy !== null}
-            onClick={selectLocal}
-          >
-            <IconFolderOpenOutlineRegular size={14} className={css.icon} />
-            <span>{busy === 'local' ? t('switching') : t('localMode')}</span>
-          </button>
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={mode === 'worktree'}
-            className={`${css.menuItem} ${mode === 'worktree' ? css.selected : ''}`}
-            disabled={busy !== null}
-            onClick={() => {
-              // Selecting worktree mode arms the host immediately (the
-              // creation instruction rides the next message); the strip
-              // lets you set a name with Enter.
-              if (!declared.worktree) {
-                void props.armWorktreeMode(undefined).catch(() => showFailure())
-              }
-              closeMenu()
-            }}
-          >
-            <IconBranchOutlineRegular size={14} className={css.icon} />
-            <span>{t('worktreeMode')}</span>
-          </button>
+        <div
+          className={css.popover}
+          data-testid="worktree-branch-menu"
+          role="listbox"
+          aria-label={t('baseBranchLabel')}
+        >
+          <div className={css.searchRow}>
+            <IconSearchOutlineRegular size={14} className={css.icon} />
+            <input
+              className={css.search}
+              data-testid="worktree-branch-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('branchSearch')}
+              aria-label={t('branchSearch')}
+            />
+          </div>
+          <div className={css.branchList}>
+            {visible.map((branch) => (
+              <button
+                key={branch.name}
+                type="button"
+                role="option"
+                aria-selected={branch.name === selectedBase}
+                data-testid={`worktree-branch-option-${branch.name}`}
+                data-remote={branch.remote ? 'true' : undefined}
+                className={`${css.branchOption} ${branch.name === selectedBase ? css.selected : ''}`}
+                onClick={() => selectBranch(branch.name)}
+              >
+                <span className={css.branchOptionName}>{branch.name}</span>
+                {branch.name === selectedBase && <IconCheckOutlineRegular size={13} className={css.branchCheck} />}
+              </button>
+            ))}
+            {visible.length === 0 && (
+              <div className={css.branchEmpty}>
+                {listing?.available === false ? t('branchUnavailable') : t('branchEmpty')}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {notice !== null && <span className={css.notice} role="status">{notice}</span>}
+      {notice !== null && (
+        <span className={css.notice} data-tone={busy === 'local' ? 'info' : 'error'} role="status">{notice}</span>
+      )}
     </div>
   )
 }

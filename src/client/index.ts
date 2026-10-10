@@ -1,19 +1,21 @@
 /**
  * dsh-task-worktree browser half.
  *
- * Mounts a compact worktree action bar into `conversation.input.dock`, a
- * worktree recognition badge into `conversation.session.header.actions`, and
- * a "start in worktree mode" strip on blank conversations.
+ * Mounts a compact worktree control into `conversation.input.dock` (a
+ * `worktree` checkbox plus the base-branch picker) and a worktree recognition
+ * badge into `conversation.session.header.actions`. Both appear on blank
+ * conversations only.
  *
  * Workspace discipline: creating a worktree NEVER registers a workspace and
  * NEVER switches the conversation — work continues in-place.
  *
- * Data channels: the strip's blank-hero detection reads the host session
- * list (`blank` flag and cwd — window-independent); the badge reads the
- * worktree declaration store (set by start-in-worktree-mode) plus the session
- * cwd. Note: framework session standard props (useSession / useInput) are NOT
- * injected into slot components in the current shell, so nothing depends on
- * them.
+ * Data channels: blank-hero detection reads the host session list (`blank`
+ * flag and cwd — window-independent); the badge reads the worktree declaration
+ * store (set by the composer's checkbox) plus the session cwd; the
+ * base-branch picker reads the repository's ref files through the shell's
+ * `workspaceFiles` Remote (see gitRefs.ts). Note: framework session standard
+ * props (useSession / useInput) are NOT injected into slot components in the
+ * current shell, so nothing depends on them.
  *
  * "Current session" is the main-view row: dsh 0.1.6 dropped `sessions.current`
  * from the list state (navigation belongs to the view owners), so it is
@@ -35,6 +37,8 @@ import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 // project, so the main-view derivation below typechecks. Erased from the
 // bundle; the ui-session bundle itself is a runtime peer the shell owns.
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type { BranchListing, WorkspaceFilesFace } from './gitRefs.ts'
+import { readBranches } from './gitRefs.ts'
 import { en, zh } from './locales.ts'
 import { WorktreeBadge } from './WorktreeBadge.tsx'
 import { WorktreePanel } from './WorktreePanel.tsx'
@@ -58,6 +62,8 @@ interface LocaleService {
 /** The client cordis context shape this plugin relies on. */
 interface WorktreeClientContext {
   effect(callback: () => unknown, label?: string): void
+  /** Cordis service lookup: the plugin reads optional services through it. */
+  get?(name: string): unknown
   locale: LocaleService
   slots: SlotsService
   sessions: ISessions
@@ -110,6 +116,21 @@ export function apply(ctx: WorktreeClientContext): void {
   /** Whether the staged session is still blank (host-computed empty-log bit). */
   const currentBlank = (): boolean => currentRow()?.blank === true
 
+  /**
+   * The staged session's workspace root. `workspaceFiles.list` resolves
+   * relative paths against it (and refuses targets outside it), and a session
+   * row carries no workspace id of its own — the registry's Session
+   * membership is the only mapping the Client exposes.
+   */
+  const currentWorkspaceRoot = (): string | undefined => {
+    const current = currentRow()?.id
+    if (current === undefined) return undefined
+    for (const view of ctx.workspaces.list.getSnapshot().items) {
+      if (view.sessionIds.includes(current)) return view.path
+    }
+    return undefined
+  }
+
   /** Open the local workspace that owns the current worktree checkout. */
   const openLocalWorkspace = async (): Promise<void> => {
     const cwd = currentCwd()
@@ -129,21 +150,34 @@ export function apply(ctx: WorktreeClientContext): void {
   /**
    * Arm this conversation for worktree mode: the host injects the creation
    * instruction with the NEXT genuine user message (no separate prompt, no
-   * workspace registration). Name from the caller when given, otherwise the
-   * model proposes one. On success the session is declared worktree-mode in
-   * the store (the badge switches on immediately).
+   * workspace registration). The base branch is the one the composer's picker
+   * chose; the model names the worktree branch itself. On success the session
+   * is declared worktree-mode in the store (the badge switches on immediately).
    */
-  const armWorktreeMode = async (rawName: string | undefined): Promise<void> => {
+  const armWorktreeMode = async (rawBase: string | undefined): Promise<void> => {
     const sessionId = currentSessionId()
     const session = currentSession()
     if (session === undefined || sessionId === undefined) throw new Error('当前没有可注入的对话')
-    // Branch convention: every managed branch starts with "worktree/".
-    const trimmed = rawName?.trim() ?? ''
-    const name = trimmed === '' ? undefined : (trimmed.startsWith('worktree/') ? trimmed : `worktree/${trimmed}`)
-    const line = name !== undefined ? `/worktree mode-on ${name}` : '/worktree mode-on'
+    const base = rawBase?.trim() ?? ''
+    const line = base === '' ? '/worktree mode-on' : `/worktree mode-on --base ${base}`
     const result = await session.command(line)
     if (!result.ok || result.value.matched !== true) throw new Error('指令未执行成功')
-    store.declare(sessionId, name)
+    store.declare(sessionId, base === '' ? undefined : base)
+  }
+
+  /**
+   * Read the repository's branches for the base-branch picker. The shell's
+   * `workspaceFiles` Remote is optional (a minimal preset and a third-party
+   * composition may omit it), so the lookup is soft and a missing service
+   * degrades to an unavailable listing instead of failing the panel.
+   */
+  const listBranches = async (): Promise<BranchListing> => {
+    const sessionId = currentSessionId()
+    const files = ctx.get?.('remote.workspaceFiles') as WorkspaceFilesFace | undefined
+    if (sessionId === undefined || files === undefined) {
+      return { available: false, current: undefined, branches: [], reason: 'unavailable' }
+    }
+    return readBranches({ sessionId, root: currentWorkspaceRoot(), cwd: currentCwd(), files })
   }
 
   /** Disarm worktree mode for the current conversation. */
@@ -169,6 +203,7 @@ export function apply(ctx: WorktreeClientContext): void {
     openLocalWorkspace,
     armWorktreeMode,
     disarmWorktreeMode,
+    listBranches,
     store,
     sessionIdOf: currentSessionId,
     t,

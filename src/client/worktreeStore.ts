@@ -1,15 +1,16 @@
 /**
  * Reactive per-session worktree mode store.
  *
- * Selecting Worktree mode in the mode dropdown arms the host immediately
- * (`/worktree mode-on`); the store mirrors that with the optional declared
- * name. Slot components read it through useSyncExternalStore.
+ * The composer's worktree checkbox arms the host immediately
+ * (`/worktree mode-on [--base <branch>]`); the store mirrors that intent for
+ * the panel and the conversation badge. Slot components read it through
+ * useSyncExternalStore.
  */
 /** State the components need for the current session. */
 export interface WorktreeSessionState {
-  /** Declared worktree name (arm-worktree-mode), or undefined. */
-  name: string | undefined
-  /** Worktree mode selected/armed (badge + strip on). */
+  /** Base branch the next worktree starts from, or undefined (the host's HEAD). */
+  base: string | undefined
+  /** Worktree mode selected/armed (checkbox + badge on). */
   worktree: boolean
 }
 
@@ -18,8 +19,8 @@ export interface WorktreeStore {
   subscribe(listener: () => void): () => void
   getVersion(): number
   stateOf(sessionId: string | undefined): WorktreeSessionState
-  /** Arm the host: worktree mode + optional name. */
-  declare(sessionId: string | undefined, name: string | undefined): void
+  /** Arm the host: worktree mode + optional base branch. */
+  declare(sessionId: string | undefined, base: string | undefined): void
   clear(sessionId: string | undefined): void
 }
 
@@ -43,14 +44,14 @@ export function createWorktreeStore(): WorktreeStore {
       return version
     },
     stateOf(sessionId) {
-      if (sessionId === undefined) return { name: undefined, worktree: false }
-      return byId.get(sessionId) ?? { name: undefined, worktree: false }
+      if (sessionId === undefined) return { base: undefined, worktree: false }
+      return byId.get(sessionId) ?? { base: undefined, worktree: false }
     },
-    declare(sessionId, name) {
+    declare(sessionId, base) {
       if (sessionId === undefined) return
       const current = byId.get(sessionId)
-      const next = { name: name ?? undefined, worktree: true }
-      if (current !== undefined && current.name === next.name && current.worktree === next.worktree) return
+      const next = { base: base ?? undefined, worktree: true }
+      if (current !== undefined && current.base === next.base && current.worktree === next.worktree) return
       const cloned = new Map(byId)
       cloned.set(sessionId, next)
       bump(cloned)
