@@ -135,7 +135,7 @@ export function apply(ctx: WorktreeClientContext): void {
   const openLocalWorkspace = async (): Promise<void> => {
     const cwd = currentCwd()
     if (typeof cwd !== 'string' || cwd === '') {
-      throw new Error('无法确定当前工作区路径')
+      throw new Error('cannot determine the current workspace path')
     }
     const marker = /[\\/]\.dsh-worktrees[\\/]worktree[\\/]/u.exec(cwd)
     const localPath = marker !== null ? cwd.slice(0, marker.index) : cwd
@@ -157,11 +157,11 @@ export function apply(ctx: WorktreeClientContext): void {
   const armWorktreeMode = async (rawBase: string | undefined): Promise<void> => {
     const sessionId = currentSessionId()
     const session = currentSession()
-    if (session === undefined || sessionId === undefined) throw new Error('当前没有可注入的对话')
+    if (session === undefined || sessionId === undefined) throw new Error('there is no conversation to inject into')
     const base = rawBase?.trim() ?? ''
     const line = base === '' ? '/worktree mode-on' : `/worktree mode-on --base ${base}`
     const result = await session.command(line)
-    if (!result.ok || result.value.matched !== true) throw new Error('指令未执行成功')
+    if (!result.ok || result.value.matched !== true) throw new Error('the command did not run')
     store.declare(sessionId, base === '' ? undefined : base)
   }
 
@@ -184,9 +184,9 @@ export function apply(ctx: WorktreeClientContext): void {
   const disarmWorktreeMode = async (): Promise<void> => {
     const sessionId = currentSessionId()
     const session = currentSession()
-    if (session === undefined || sessionId === undefined) throw new Error('当前没有可注入的对话')
+    if (session === undefined || sessionId === undefined) throw new Error('there is no conversation to inject into')
     const result = await session.command('/worktree mode-off')
-    if (!result.ok || result.value.matched !== true) throw new Error('指令未执行成功')
+    if (!result.ok || result.value.matched !== true) throw new Error('the command did not run')
     store.clear(sessionId)
   }
 

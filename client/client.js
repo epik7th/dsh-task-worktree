@@ -738,7 +738,7 @@ function apply(ctx) {
 	/** Open the local workspace that owns the current worktree checkout. */
 	const openLocalWorkspace = async () => {
 		const cwd = currentCwd();
-		if (typeof cwd !== "string" || cwd === "") throw new Error("无法确定当前工作区路径");
+		if (typeof cwd !== "string" || cwd === "") throw new Error("cannot determine the current workspace path");
 		const marker = /[\\/]\.dsh-worktrees[\\/]worktree[\\/]/u.exec(cwd);
 		const localPath = marker !== null ? cwd.slice(0, marker.index) : cwd;
 		const workspace = await ctx.workspaces.create({ path: localPath });
@@ -754,11 +754,11 @@ function apply(ctx) {
 	const armWorktreeMode = async (rawBase) => {
 		const sessionId = currentSessionId();
 		const session = currentSession();
-		if (session === void 0 || sessionId === void 0) throw new Error("当前没有可注入的对话");
+		if (session === void 0 || sessionId === void 0) throw new Error("there is no conversation to inject into");
 		const base = rawBase?.trim() ?? "";
 		const line = base === "" ? "/worktree mode-on" : `/worktree mode-on --base ${base}`;
 		const result = await session.command(line);
-		if (!result.ok || result.value.matched !== true) throw new Error("指令未执行成功");
+		if (!result.ok || result.value.matched !== true) throw new Error("the command did not run");
 		store.declare(sessionId, base === "" ? void 0 : base);
 	};
 	/**
@@ -787,9 +787,9 @@ function apply(ctx) {
 	const disarmWorktreeMode = async () => {
 		const sessionId = currentSessionId();
 		const session = currentSession();
-		if (session === void 0 || sessionId === void 0) throw new Error("当前没有可注入的对话");
+		if (session === void 0 || sessionId === void 0) throw new Error("there is no conversation to inject into");
 		const result = await session.command("/worktree mode-off");
-		if (!result.ok || result.value.matched !== true) throw new Error("指令未执行成功");
+		if (!result.ok || result.value.matched !== true) throw new Error("the command did not run");
 		store.clear(sessionId);
 	};
 	ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({

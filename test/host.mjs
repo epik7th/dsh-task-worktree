@@ -10,7 +10,7 @@
  * Run: node test/host.mjs
  */
 import { spawn } from 'node:child_process'
-import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 // The host's own durable-row admission (session format v4). It is the gate that
@@ -18,6 +18,9 @@ import path from 'node:path'
 // wrapper on its injected instruction.
 import { assertV4RowAdmission } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { apply } from '../lib/index.js'
+
+/** CJK ideographs: the host half has no locale service, so it must ship none. */
+const CJK = /[\u3400-\u9fff]/u
 
 let failed = 0
 function check(label, condition, detail = '') {
@@ -210,7 +213,7 @@ try {
     baseInjected.length === 1 && baseText.includes('baseCommit') && baseText.includes('main'),
     baseText.slice(0, 300))
   check('a base-only arm still lets the model name the branch',
-    baseText.includes('worktree/') && !baseText.includes('分支名为'), baseText.slice(0, 300))
+    baseText.includes('choose the branch name yourself') && baseText.includes('worktree/'), baseText.slice(0, 300))
 
   // A base that does not resolve must fail the arm instead of injecting an
   // instruction whose worktree_create would fail mid-turn.
@@ -225,6 +228,33 @@ try {
     message: { source: { kind: 'user' } },
   })
   check('a refused arm injects nothing', badInjected.length === 0, `${badInjected.length} injection(s)`)
+
+  console.log('host copy is English (no locale service reaches command output)')
+  // Command results are durable conversation rows the user reads; the injected
+  // instruction is visible in the transcript too, and its language also steers
+  // the model's reply language. Both are plain English, and a Chinese string
+  // added later fails here instead of shipping.
+  check('the mode-on acknowledgement is English', !CJK.test(baseArm.text), baseArm.text)
+  check('the mode-off acknowledgement is English',
+    !CJK.test((await commands.get('worktree').handler({ rawInput: 'mode-off', agent: agentFor('s-lang', repo) })).text))
+  check('the injected instruction is English', !CJK.test(baseText), baseText.slice(0, 200))
+  const namedCopy = []
+  await commands.get('worktree').handler({ rawInput: 'mode-on worktree/named', agent: agentFor('s-lang2', repo) })
+  listeners.get('agent/inbox/inserted')[0]({
+    agent: { ...agentFor('s-lang2', repo), inject: (message) => namedCopy.push(message) },
+    message: { source: { kind: 'user' } },
+  })
+  check('the named-branch instruction is English too',
+    !CJK.test(JSON.stringify(namedCopy[0] ?? null)) && JSON.stringify(namedCopy[0] ?? null).includes('worktree/named'),
+    JSON.stringify(namedCopy[0] ?? null).slice(0, 200))
+  const hostSources = (await readdir(new URL('../lib', import.meta.url)))
+    .filter((name) => name.endsWith('.js'))
+  const offenders = []
+  for (const name of hostSources) {
+    const text = await readFile(new URL(`../lib/${name}`, import.meta.url), 'utf8')
+    if (CJK.test(text)) offenders.push(name)
+  }
+  check('no shipped host module contains Chinese text', offenders.length === 0, offenders.join(', '))
 
   console.log('the arm outlives the agent it was set on')
   // The observed live failure: arm on the agent serving the session, then the

@@ -76,7 +76,8 @@ conversation starts) → pick the base branch in the picker beside it
    worktree mode at all: the control disappears once the ref read settles
    (before that it renders, since "unknown" is not "no").
 2. **Send your first message** — the host injects one `instructions` context
-   block (shown as 上下文注入) right before your message: create the worktree
+   block (the shell shows it as an injected-context row) right before your message:
+   create the worktree
    with a `worktree/`-prefixed branch, work inside the checkout path, and at
    the end remind the user with copy-paste cleanup commands
    (`bring-back` or `remove --force`).

@@ -162,3 +162,26 @@ Two layout facts this control has to respect, both learned live:
   contents, the exact `/worktree …` line each interaction issues) plus the ref
   reader over an in-memory `workspaceFiles` stand-in, so this behaviour is
   verified without a browser.
+
+## Follow-up: host copy is English only
+
+Command results and the injected instruction were Chinese. The host half has no
+locale service — `dsh-client-locale` translates *browser* copy, and a command's
+`text` becomes a durable conversation row that no dictionary reaches. The user
+saw `Worktree 模式已启用（分支名将由 AI 拟定，起点：main）` and asked what had
+happened, and because the injected instruction was Chinese the model answered in
+Chinese as well, so the whole turn was unreadable to them.
+
+Decision: **every user-visible string the host half produces is English** —
+command acknowledgements, injected instructions, tool descriptions and parameter
+docs, and the errors the browser half raises. The client dictionaries keep their
+`zh` side (a Chinese GUI must stay Chinese); `en` is what an English GUI reads.
+The instruction is written in English rather than the reader's language because
+the host cannot know the browser locale, and English is what the model mirrors
+without biasing the user's own language. `test/host.mjs` fails if any shipped
+`lib/*.js` module contains a CJK ideograph, so the next Chinese string cannot
+ship silently.
+
+A Russian UI was considered and rejected as this plugin's job: the shell ships
+only `zh` and `en` (`LOCALE_IDS`), and an external language pack translates one
+namespace, so our panel would be Russian inside an English application.
