@@ -60,7 +60,11 @@ the module:
   into the main repository);
 - a linked-worktree session therefore degrades to `packed-refs` + `HEAD`: its
   loose refs live outside its own workspace root and are not invented. The
-  checked-out branch is always offered, taken from `HEAD`.
+  checked-out branch is always offered, taken from `HEAD`;
+- a session whose cwd is a *subdirectory* of its workspace has its repository
+  in an ancestor, so the `.git` lookup walks up — stopping at the workspace root
+  when the registry knows it, so an unrelated repository above the workspace is
+  never adopted.
 
 The lookup is soft (`ctx.get(...)`, no `inject` entry in the Cordis plugin face)
 because a minimal preset may not mount the package: a missing service, a

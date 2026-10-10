@@ -175,6 +175,50 @@ async function listRefs(
   return names
 }
 
+/** A located git directory and the raw `HEAD` it carries. */
+interface GitLocation {
+  gitDir: string
+  head: string | undefined
+}
+
+/**
+ * Locate the git directory for a working directory. A session may target a
+ * subdirectory of its workspace, so the search walks up — stopping at the
+ * workspace root when it is known, so an unrelated repository above the
+ * workspace is never adopted.
+ */
+async function locateGitDir(
+  files: WorkspaceFilesFace,
+  sessionId: string,
+  cwd: string,
+  root: string | undefined,
+  signal: AbortSignal | undefined,
+): Promise<GitLocation | undefined> {
+  const stop = root === undefined || root === '' ? undefined : normalizePath(root)
+  let directory = normalizePath(cwd)
+  for (let depth = 0; depth < 8; depth += 1) {
+    const dotGit = joinPath(directory, '.git')
+    const direct = await files.read(sessionId, joinPath(dotGit, 'HEAD'), {}, signal)
+    if (direct.ok) return { gitDir: dotGit, head: direct.value.text }
+    // A linked worktree keeps a `.git` file naming its per-worktree git
+    // directory (absolute, or relative to the working directory).
+    const pointer = await files.read(sessionId, dotGit, {}, signal)
+    if (pointer.ok) {
+      const linked = parseGitDirFile(pointer.value.text)
+      if (linked !== undefined) {
+        const gitDir = normalizePath(linked.startsWith('/') ? linked : joinPath(directory, linked))
+        const linkedHead = await files.read(sessionId, joinPath(gitDir, 'HEAD'), {}, signal)
+        return { gitDir, head: linkedHead.ok ? linkedHead.value.text : undefined }
+      }
+    }
+    if (directory === stop) break
+    const parent = normalizePath(`${directory}/..`)
+    if (parent === directory) break
+    directory = parent
+  }
+  return undefined
+}
+
 /**
  * Read the session repository's branches. Never rejects: a missing file
  * service, a directory that is not a repository, and unreadable ref files all
@@ -192,22 +236,9 @@ export async function readBranches(input: BranchReadInput): Promise<BranchListin
 
   // A working tree has a `.git` directory; a linked worktree has a `.git` file
   // naming its per-worktree git directory.
-  const dotGit = joinPath(cwd, '.git')
-  let gitDir: string | undefined
-  let head: string | undefined
-  const direct = await files.read(sessionId, joinPath(dotGit, 'HEAD'), {}, signal)
-  if (direct.ok) {
-    gitDir = dotGit
-    head = direct.value.text
-  } else {
-    const pointer = await files.read(sessionId, dotGit, {}, signal)
-    if (!pointer.ok) return unavailable('not-a-repo')
-    const linked = parseGitDirFile(pointer.value.text)
-    if (linked === undefined) return unavailable('not-a-repo')
-    gitDir = normalizePath(linked.startsWith('/') ? linked : joinPath(cwd, linked))
-    const linkedHead = await files.read(sessionId, joinPath(gitDir, 'HEAD'), {}, signal)
-    if (linkedHead.ok) head = linkedHead.value.text
-  }
+  const located = await locateGitDir(files, sessionId, cwd, root, signal)
+  if (located === undefined) return unavailable('not-a-repo')
+  const { gitDir, head } = located
 
   // Ref namespaces live in the common directory of a linked worktree.
   let refsHome = gitDir

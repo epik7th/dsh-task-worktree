@@ -86,6 +86,40 @@ async function listRefs(files, sessionId, root, directory, prefix, signal, depth
 	return names;
 }
 /**
+* Locate the git directory for a working directory. A session may target a
+* subdirectory of its workspace, so the search walks up — stopping at the
+* workspace root when it is known, so an unrelated repository above the
+* workspace is never adopted.
+*/
+async function locateGitDir(files, sessionId, cwd, root, signal) {
+	const stop = root === void 0 || root === "" ? void 0 : normalizePath(root);
+	let directory = normalizePath(cwd);
+	for (let depth = 0; depth < 8; depth += 1) {
+		const dotGit = joinPath(directory, ".git");
+		const direct = await files.read(sessionId, joinPath(dotGit, "HEAD"), {}, signal);
+		if (direct.ok) return {
+			gitDir: dotGit,
+			head: direct.value.text
+		};
+		const pointer = await files.read(sessionId, dotGit, {}, signal);
+		if (pointer.ok) {
+			const linked = parseGitDirFile(pointer.value.text);
+			if (linked !== void 0) {
+				const gitDir = normalizePath(linked.startsWith("/") ? linked : joinPath(directory, linked));
+				const linkedHead = await files.read(sessionId, joinPath(gitDir, "HEAD"), {}, signal);
+				return {
+					gitDir,
+					head: linkedHead.ok ? linkedHead.value.text : void 0
+				};
+			}
+		}
+		if (directory === stop) break;
+		const parent = normalizePath(`${directory}/..`);
+		if (parent === directory) break;
+		directory = parent;
+	}
+}
+/**
 * Read the session repository's branches. Never rejects: a missing file
 * service, a directory that is not a repository, and unreadable ref files all
 * come back as an unavailable listing so the composer can keep working with
@@ -103,22 +137,9 @@ async function readBranches(input) {
 	});
 	if (files === void 0) return unavailable("unavailable");
 	if (typeof cwd !== "string" || cwd === "") return unavailable("not-a-repo");
-	const dotGit = joinPath(cwd, ".git");
-	let gitDir;
-	let head;
-	const direct = await files.read(sessionId, joinPath(dotGit, "HEAD"), {}, signal);
-	if (direct.ok) {
-		gitDir = dotGit;
-		head = direct.value.text;
-	} else {
-		const pointer = await files.read(sessionId, dotGit, {}, signal);
-		if (!pointer.ok) return unavailable("not-a-repo");
-		const linked = parseGitDirFile(pointer.value.text);
-		if (linked === void 0) return unavailable("not-a-repo");
-		gitDir = normalizePath(linked.startsWith("/") ? linked : joinPath(cwd, linked));
-		const linkedHead = await files.read(sessionId, joinPath(gitDir, "HEAD"), {}, signal);
-		if (linkedHead.ok) head = linkedHead.value.text;
-	}
+	const located = await locateGitDir(files, sessionId, cwd, root, signal);
+	if (located === void 0) return unavailable("not-a-repo");
+	const { gitDir, head } = located;
 	let refsHome = gitDir;
 	const common = await files.read(sessionId, joinPath(gitDir, "commondir"), {}, signal);
 	if (common.ok) {

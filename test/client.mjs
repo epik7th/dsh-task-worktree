@@ -502,6 +502,25 @@ console.log('base-branch listing (workspaceFiles Remote)')
     listing?.branches?.find((branch) => branch.name === 'origin/main')?.remote === true)
 }
 
+console.log('base-branch listing walks up to the repository root')
+{
+  // A session may target a subdirectory of its workspace; git then lives in an
+  // ancestor, and only `read` can discover that (there is no stat-only probe).
+  const rows = { 's-sub': { id: 's-sub', cwd: `${REPO_ROOT}/packages/app`, blank: true, retainedBy: { mainView: 1 } } }
+  const { ctx, registered, pending } = makeCtx(rows, [], {
+    files: mainRepoFiles,
+    workspaces: [{ workspaceId: 'ws-3', path: REPO_ROOT, sessionIds: ['s-sub'] }],
+  })
+  clientModule.apply(ctx)
+  for (const register of pending) register()
+  const listing = await branchesOf(registered)
+  check('a subdirectory session still finds the repository above it',
+    listing.available === true && listing.current === 'main', JSON.stringify(listing))
+  check('its branches come from the repository root',
+    sameSet(listing.branches.map((branch) => branch.name), ['main', 'claude/a', 'feature/x', 'origin/main', 'origin/release']),
+    JSON.stringify(listing.branches?.map((branch) => branch.name)))
+}
+
 console.log('base-branch listing degrades instead of failing')
 {
   const noService = makeCtx(repoRows, [], { workspaces: repoWorkspaces })
